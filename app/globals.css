@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background-color: #F8F5F0;
+  color: #2C2C3E;
+  font-feature-settings: 'palt';
+  -webkit-font-smoothing: antialiased;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+/* スムーズなフォーカスリング */
+*:focus-visible {
+  outline: 2px solid #C9A96E;
+  outline-offset: 2px;
+}
+
+/* チェックボックスのカスタム */
+input[type="checkbox"] {
+  accent-color: #1A1B35;
+}
