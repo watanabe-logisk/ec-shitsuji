@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { SESSION_COOKIE, getSessionToken } from '@/lib/auth'
 
-const SESSION_COOKIE = 'ec_shitsuji_session'
-
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isPublicAsset = /\.(png|jpg|jpeg|gif|svg|ico|webp|woff|woff2)$/i.test(pathname)
   if (isPublicAsset || pathname.startsWith('/api/auth') || pathname === '/') {
@@ -10,9 +9,7 @@ export function middleware(request: NextRequest) {
   }
 
   const session = request.cookies.get(SESSION_COOKIE)
-  const expectedToken = Buffer.from(
-    process.env.AUTH_PASSWORD ?? 'shitsuji2024'
-  ).toString('base64')
+  const expectedToken = await getSessionToken()
 
   if (!session || session.value !== expectedToken) {
     return NextResponse.redirect(new URL('/', request.url))

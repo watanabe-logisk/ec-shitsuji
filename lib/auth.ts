@@ -1,25 +1,16 @@
-import { cookies } from 'next/headers'
+export const SESSION_COOKIE = 'ec_shitsuji_session'
 
-const SESSION_COOKIE = 'ec_shitsuji_session'
-const SESSION_VALUE = 'authenticated'
-
-export function getSessionToken(): string {
-  const password = process.env.AUTH_PASSWORD ?? 'shitsuji2024'
-  return Buffer.from(password).toString('base64')
-}
-
-export function isAuthenticated(): boolean {
-  const cookieStore = cookies()
-  const session = cookieStore.get(SESSION_COOKIE)
-  return session?.value === getSessionToken()
-}
-
-export function setSessionCookie(response: Response): Response {
-  response.headers.set(
-    'Set-Cookie',
-    `${SESSION_COOKIE}=${getSessionToken()}; HttpOnly; Path=/; SameSite=Strict; Max-Age=86400`
+export async function getSessionToken(): Promise<string> {
+  const password = process.env.AUTH_PASSWORD ?? ''
+  const secret = process.env.SESSION_SECRET ?? 'fallback'
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
   )
-  return response
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(password))
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('')
 }
-
-export { SESSION_COOKIE, SESSION_VALUE }
