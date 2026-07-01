@@ -260,10 +260,10 @@ export default function OrderForm({ orderId, initialData }: Props) {
             {alertExtraDays === 0 ? (
               <button
                 type="button"
-                onClick={() => setAlertExtraDays(1)}
+                onClick={() => setAlertExtraDays(2)}
                 className="border border-champagne text-champagne text-xs tracking-widest uppercase px-4 py-2 hover:bg-champagne hover:text-navy transition-colors"
               >
-                +1日延長
+                +2日延長
               </button>
             ) : (
               <button
