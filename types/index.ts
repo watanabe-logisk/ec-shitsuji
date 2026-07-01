@@ -32,6 +32,7 @@ export type Order = {
   time_slot: string
   notes: string
   status: 'pending' | 'shipped'
+  alert_extra_days: number
   created_at: string
 }
 

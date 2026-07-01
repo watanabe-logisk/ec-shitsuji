@@ -6,31 +6,37 @@ import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import Link from 'next/link'
 
-function addBusinessDays(date: Date, days: number): Date {
-  const result = new Date(date)
-  let added = 0
-  while (added < days) {
-    result.setDate(result.getDate() + 1)
-    const d = result.getDay()
-    if (d !== 0 && d !== 6) added++
+function subtractBusinessDays(dateStr: string, days: number): string {
+  const date = new Date(dateStr)
+  let subtracted = 0
+  while (subtracted < days) {
+    date.setDate(date.getDate() - 1)
+    const d = date.getDay()
+    if (d !== 0 && d !== 6) subtracted++
   }
-  return result
+  return format(date, 'yyyy-MM-dd')
 }
 
 export default function ButlerGreeting() {
   const [alertOrders, setAlertOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
 
-  const alertDate = format(addBusinessDays(new Date(), 2), 'yyyy-MM-dd')
+  const today = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
-    fetch(`/api/orders?date=${alertDate}&status=pending`)
+    fetch(`/api/orders?status=pending`)
       .then(r => r.json())
       .then(data => {
-        setAlertOrders(Array.isArray(data) ? data : [])
+        const all = Array.isArray(data) ? data : []
+        const alerts = all.filter((order: Order) => {
+          const extra = order.alert_extra_days || 0
+          const triggerDate = subtractBusinessDays(order.shipping_date, 2 + extra)
+          return triggerDate <= today && order.shipping_date >= today
+        })
+        setAlertOrders(alerts)
         setLoading(false)
       })
-  }, [alertDate])
+  }, [today])
 
   function getGreeting() {
     const h = new Date().getHours()
@@ -40,7 +46,6 @@ export default function ButlerGreeting() {
   }
 
   const todayLabel = format(new Date(), 'yyyy年M月d日（E）', { locale: ja })
-  const alertDateLabel = format(addBusinessDays(new Date(), 2), 'M月d日（E）', { locale: ja })
 
   return (
     <div className="relative bg-warm-50 border border-warm-300 shadow-sm overflow-hidden mb-8">
@@ -79,7 +84,7 @@ export default function ButlerGreeting() {
               本日出荷が必要な件数
             </p>
             <p className="text-xs text-champagne-dark mb-3">
-              （配送指定日：{alertDateLabel} の注文）
+              （本日を出荷期限とする出荷待ち注文）
             </p>
             <div className="flex items-end gap-4 mb-1">
               <span className="font-display font-light text-champagne leading-none" style={{ fontSize: '5rem' }}>

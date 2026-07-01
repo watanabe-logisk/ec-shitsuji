@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Order } from '@/types'
 
-function calcShipDate(shippingDate: string): string {
+function calcShipDate(shippingDate: string, extraDays = 0): string {
   if (!shippingDate) return ''
   const date = new Date(shippingDate)
   let subtracted = 0
-  while (subtracted < 2) {
+  while (subtracted < 2 + extraDays) {
     date.setDate(date.getDate() - 1)
     const d = date.getDay()
     if (d !== 0 && d !== 6) subtracted++
@@ -192,8 +192,15 @@ export default function OrderList() {
                       <td className="px-4 py-3 text-stone text-sm">{order.product_name}</td>
                       <td className="px-4 py-3 text-stone text-sm">{order.quantity}</td>
                       <td className="px-4 py-3 text-sm">
-                        {calcShipDate(order.shipping_date)
-                          ? <span className="text-champagne-dark font-medium">{calcShipDate(order.shipping_date)}</span>
+                        {calcShipDate(order.shipping_date, order.alert_extra_days || 0)
+                          ? (
+                            <span className="text-champagne-dark font-medium">
+                              {calcShipDate(order.shipping_date, order.alert_extra_days || 0)}
+                              {(order.alert_extra_days || 0) > 0 && (
+                                <span className="ml-1 text-xs bg-champagne-light text-champagne-dark px-1 py-0.5">延長</span>
+                              )}
+                            </span>
+                          )
                           : <span className="text-stone">—</span>}
                       </td>
                       <td className="px-4 py-3 text-stone text-sm">{order.shipping_date}</td>

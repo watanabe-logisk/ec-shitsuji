@@ -6,8 +6,17 @@ function formatDate(dateStr: string): string {
   return dateStr.replace(/-/g, '')
 }
 
+// Unicode上のハイフン・ダッシュ系文字をASCIIハイフンに正規化（Shift-JIS非対応文字の?化を防ぐ）
+function normalizeText(s: string): string {
+  return s
+    .replace(/[‒–—―−﹣]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+}
+
 function q(val: string | number | null | undefined): string {
-  const s = String(val ?? '')
+  const s = normalizeText(String(val ?? ''))
   return `"${s.replace(/"/g, '""')}"`
 }
 

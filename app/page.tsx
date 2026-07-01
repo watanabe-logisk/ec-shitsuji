@@ -29,12 +29,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#FAFAF6' }}>
       {/* ヒーロー画像 */}
-      <div className="w-full">
+      <div className="flex justify-center pt-10 pb-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/butler.png"
           alt="EC執事"
-          style={{ width: '100%', display: 'block' }}
+          style={{ maxWidth: '260px', width: '55%', display: 'block' }}
         />
       </div>
 

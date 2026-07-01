@@ -30,6 +30,7 @@ export default function OrderForm({ orderId, initialData }: Props) {
   const [shippingDate, setShippingDate] = useState(initialData?.shipping_date ?? '')
   const [timeSlot, setTimeSlot] = useState(initialData?.time_slot ?? '指定無し')
   const [notes, setNotes] = useState(initialData?.notes ?? '')
+  const [alertExtraDays, setAlertExtraDays] = useState(initialData?.alert_extra_days ?? 0)
 
   const [useCustomAddress, setUseCustomAddress] = useState(false)
   const [shippingName, setShippingName] = useState(initialData?.shipping_name ?? '')
@@ -95,6 +96,7 @@ export default function OrderForm({ orderId, initialData }: Props) {
       shipping_phone: shippingPhone,
       time_slot: timeSlot,
       notes,
+      alert_extra_days: alertExtraDays,
     }
 
     const url = isEdit ? `/api/orders/${orderId}` : '/api/orders'
@@ -244,6 +246,34 @@ export default function OrderForm({ orderId, initialData }: Props) {
               rows={3}
               className="w-full border border-warm-300 bg-warm-100 px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-champagne transition-colors resize-none"
             />
+          </div>
+
+          <div className="flex items-center justify-between border border-warm-300 bg-warm-100 px-4 py-3">
+            <div>
+              <p className="text-xs tracking-widest text-stone uppercase">出荷アラート</p>
+              <p className="text-xs text-stone mt-0.5">
+                {alertExtraDays === 0
+                  ? '配送指定日の2営業日前（標準）'
+                  : `配送指定日の${2 + alertExtraDays}営業日前（延長中）`}
+              </p>
+            </div>
+            {alertExtraDays === 0 ? (
+              <button
+                type="button"
+                onClick={() => setAlertExtraDays(1)}
+                className="border border-champagne text-champagne text-xs tracking-widest uppercase px-4 py-2 hover:bg-champagne hover:text-navy transition-colors"
+              >
+                +1日延長
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAlertExtraDays(0)}
+                className="border border-stone text-stone text-xs tracking-widest uppercase px-4 py-2 hover:bg-stone hover:text-white transition-colors"
+              >
+                リセット
+              </button>
+            )}
           </div>
         </div>
       </div>
