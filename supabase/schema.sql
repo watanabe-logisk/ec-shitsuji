@@ -29,9 +29,12 @@ CREATE TABLE orders (
   time_slot TEXT DEFAULT '指定無し',
   notes TEXT DEFAULT '',
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'shipped')),
+  -- 出荷アラートの延長日数。基準の2営業日前に加算される
+  alert_extra_days INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- RLS無効（内部ツールのため）
-ALTER TABLE customers DISABLE ROW LEVEL SECURITY;
-ALTER TABLE orders DISABLE ROW LEVEL SECURITY;
+-- RLS有効。ポリシーは作らない（= anon / authenticated からは一切見えない）。
+-- アプリはサーバー側 API ルートから service_role キーで接続し、RLS をバイパスする。
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
