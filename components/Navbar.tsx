@@ -48,7 +48,7 @@ export default function Navbar() {
         {navLink('/customers', '得意先')}
         <button
           onClick={handleLogout}
-          className="text-xs tracking-widest text-stone hover:text-warm-400 transition-colors uppercase"
+          className="text-xs tracking-widest text-warm-400 hover:text-warm-50 transition-colors uppercase"
         >
           Logout
         </button>

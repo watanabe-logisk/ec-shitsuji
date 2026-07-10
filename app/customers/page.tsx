@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Navbar from '@/components/Navbar'
 import { Customer } from '@/types'
 
-const inputClass = 'w-full border border-warm-300 bg-warm-100 px-3 py-2 text-sm text-ink focus:outline-none focus:border-champagne transition-colors'
+const inputClass = 'w-full border border-warm-300 bg-warm-100 px-3 py-2 text-sm text-ink focus:outline-none focus:border-champagne-dark transition-colors'
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -132,7 +132,7 @@ export default function CustomersPage() {
                       </button>
                       <button
                         onClick={cancelEdit}
-                        className="border border-warm-300 text-stone px-5 py-2 text-xs tracking-widest uppercase hover:border-champagne hover:text-champagne transition-colors"
+                        className="border border-warm-300 text-stone px-5 py-2 text-xs tracking-widest uppercase hover:border-champagne-dark hover:text-champagne-dark transition-colors"
                       >
                         キャンセル
                       </button>
@@ -153,7 +153,7 @@ export default function CustomersPage() {
                     <div className="flex gap-3 shrink-0">
                       <button
                         onClick={() => startEdit(c)}
-                        className="text-xs text-stone hover:text-champagne transition-colors tracking-wide"
+                        className="text-xs text-stone hover:text-champagne-dark transition-colors tracking-wide"
                       >
                         編集
                       </button>

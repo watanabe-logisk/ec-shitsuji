@@ -40,7 +40,7 @@ export default function EmailParser({ onParsed }: Props) {
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder="住所・担当者名の部分をここにペーストしてください"
-        className="w-full border border-warm-300 bg-warm-100 px-4 py-3 text-sm text-ink h-24 resize-none focus:outline-none focus:border-champagne transition-colors"
+        className="w-full border border-warm-300 bg-warm-100 px-4 py-3 text-sm text-ink h-24 resize-none focus:outline-none focus:border-champagne-dark transition-colors"
       />
       {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
       <button

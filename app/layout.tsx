@@ -1,5 +1,27 @@
 import type { Metadata } from 'next'
+import { Cormorant_Garamond, Noto_Sans_JP, Noto_Serif_JP } from 'next/font/google'
 import './globals.css'
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['300', '400', '600'],
+  variable: '--font-cormorant',
+  display: 'swap',
+})
+
+const notoSansJP = Noto_Sans_JP({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '700'],
+  variable: '--font-noto-sans-jp',
+  display: 'swap',
+})
+
+const notoSerifJP = Noto_Serif_JP({
+  subsets: ['latin'],
+  weight: ['400', '600'],
+  variable: '--font-noto-serif-jp',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'EC執事🐑',
@@ -8,8 +30,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja">
-      <body>{children}</body>
+    <html
+      lang="ja"
+      className={`${cormorant.variable} ${notoSansJP.variable} ${notoSerifJP.variable}`}
+    >
+      <body className="font-sans">{children}</body>
     </html>
   )
 }
