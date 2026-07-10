@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Customer, ParsedEmail, Order } from '@/types'
 import { PRODUCTS, TIME_SLOTS } from '@/lib/products'
+import { ALERT_EXTRA_DAY_OPTIONS, alertDateLabel } from '@/lib/shipping'
 import EmailParser from './EmailParser'
 
-const inputClass = 'w-full border border-warm-300 bg-warm-100 px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-champagne transition-colors'
+const inputClass = 'w-full border border-warm-300 bg-warm-100 px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-champagne-dark transition-colors'
 const labelClass = 'block text-xs tracking-widest text-stone uppercase mb-1.5'
 
 type Props = {
@@ -130,6 +131,7 @@ export default function OrderForm({ orderId, initialData }: Props) {
   }
 
   const selectedCustomer = customers.find(c => c.id === customerId)
+  const alertDate = alertDateLabel(shippingDate, alertExtraDays)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -204,7 +206,7 @@ export default function OrderForm({ orderId, initialData }: Props) {
         <p className="text-xs tracking-[0.2em] text-stone uppercase mb-5">商品・出荷情報</p>
         <div className="space-y-4">
           <div>
-            <label className={labelClass}>商品 <span className="text-champagne">*</span></label>
+            <label className={labelClass}>商品 <span className="text-champagne-dark">*</span></label>
             <select value={productId} onChange={e => setProductId(e.target.value)} required className={inputClass}>
               <option value="">-- 商品を選択 --</option>
               {PRODUCTS.map(p => (
@@ -215,7 +217,7 @@ export default function OrderForm({ orderId, initialData }: Props) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>個数 <span className="text-champagne">*</span></label>
+              <label className={labelClass}>個数 <span className="text-champagne-dark">*</span></label>
               <input
                 type="number" min={1} value={quantity}
                 onChange={e => setQuantity(Number(e.target.value))}
@@ -223,7 +225,7 @@ export default function OrderForm({ orderId, initialData }: Props) {
               />
             </div>
             <div>
-              <label className={labelClass}>配送指定日 <span className="text-champagne">*</span></label>
+              <label className={labelClass}>配送指定日 <span className="text-champagne-dark">*</span></label>
               <input
                 type="date" value={shippingDate}
                 onChange={e => setShippingDate(e.target.value)}
@@ -244,36 +246,33 @@ export default function OrderForm({ orderId, initialData }: Props) {
             <textarea
               value={notes} onChange={e => setNotes(e.target.value)}
               rows={3}
-              className="w-full border border-warm-300 bg-warm-100 px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-champagne transition-colors resize-none"
+              className="w-full border border-warm-300 bg-warm-100 px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-champagne-dark transition-colors resize-none"
             />
           </div>
 
-          <div className="flex items-center justify-between border border-warm-300 bg-warm-100 px-4 py-3">
-            <div>
-              <p className="text-xs tracking-widest text-stone uppercase">出荷アラート</p>
+          <div className="flex items-center justify-between gap-4 border border-warm-300 bg-warm-100 px-4 py-3">
+            <div className="min-w-0">
+              <label htmlFor="alert-extra-days" className="block text-xs tracking-widest text-stone uppercase">
+                出荷アラート
+              </label>
               <p className="text-xs text-stone mt-0.5">
-                {alertExtraDays === 0
-                  ? '配送指定日の2営業日前（標準）'
-                  : `配送指定日の${2 + alertExtraDays}営業日前（延長中）`}
+                配送指定日の{2 + alertExtraDays}営業日前
+                {alertExtraDays === 0 ? '（標準）' : `（+${alertExtraDays}日延長）`}
+                {alertDate && ` ・ ${alertDate}`}
               </p>
             </div>
-            {alertExtraDays === 0 ? (
-              <button
-                type="button"
-                onClick={() => setAlertExtraDays(2)}
-                className="border border-champagne text-champagne text-xs tracking-widest uppercase px-4 py-2 hover:bg-champagne hover:text-navy transition-colors"
-              >
-                +2日延長
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setAlertExtraDays(0)}
-                className="border border-stone text-stone text-xs tracking-widest uppercase px-4 py-2 hover:bg-stone hover:text-white transition-colors"
-              >
-                リセット
-              </button>
-            )}
+            <select
+              id="alert-extra-days"
+              value={alertExtraDays}
+              onChange={e => setAlertExtraDays(Number(e.target.value))}
+              className="shrink-0 border border-warm-300 bg-warm-50 px-3 py-2 text-sm text-ink focus:outline-none focus:border-champagne-dark transition-colors"
+            >
+              {ALERT_EXTRA_DAY_OPTIONS.map(d => (
+                <option key={d} value={d}>
+                  {d === 0 ? '延長なし（標準）' : `+${d}日延長`}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -290,7 +289,7 @@ export default function OrderForm({ orderId, initialData }: Props) {
           <button
             type="button"
             onClick={() => router.push('/orders')}
-            className="border border-warm-300 text-stone px-6 py-4 text-xs tracking-widest uppercase hover:border-champagne hover:text-champagne transition-colors"
+            className="border border-warm-300 text-stone px-6 py-4 text-xs tracking-widest uppercase hover:border-champagne-dark hover:text-champagne-dark transition-colors"
           >
             キャンセル
           </button>

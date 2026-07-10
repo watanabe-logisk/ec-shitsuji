@@ -5,17 +5,7 @@ import { Order } from '@/types'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import Link from 'next/link'
-
-function subtractBusinessDays(dateStr: string, days: number): string {
-  const date = new Date(dateStr)
-  let subtracted = 0
-  while (subtracted < days) {
-    date.setDate(date.getDate() - 1)
-    const d = date.getDay()
-    if (d !== 0 && d !== 6) subtracted++
-  }
-  return format(date, 'yyyy-MM-dd')
-}
+import { alertDateISO } from '@/lib/shipping'
 
 export default function ButlerGreeting() {
   const [alertOrders, setAlertOrders] = useState<Order[]>([])
@@ -29,8 +19,7 @@ export default function ButlerGreeting() {
       .then(data => {
         const all = Array.isArray(data) ? data : []
         const alerts = all.filter((order: Order) => {
-          const extra = order.alert_extra_days || 0
-          const triggerDate = subtractBusinessDays(order.shipping_date, 2 + extra)
+          const triggerDate = alertDateISO(order.shipping_date, order.alert_extra_days || 0)
           return triggerDate <= today && order.shipping_date >= today
         })
         setAlertOrders(alerts)
@@ -87,7 +76,7 @@ export default function ButlerGreeting() {
               （本日を出荷期限とする出荷待ち注文）
             </p>
             <div className="flex items-end gap-4 mb-1">
-              <span className="font-display font-light text-champagne leading-none" style={{ fontSize: '5rem' }}>
+              <span className="font-display font-light text-champagne-dark leading-none tabular-nums" style={{ fontSize: '5rem' }}>
                 {alertOrders.length}
               </span>
               <div className="pb-2">
@@ -132,7 +121,7 @@ export default function ButlerGreeting() {
           </Link>
           <Link
             href="/orders"
-            className="border border-warm-300 text-stone px-6 py-2.5 text-xs tracking-widest uppercase hover:border-champagne hover:text-champagne transition-colors"
+            className="border border-warm-300 text-stone px-6 py-2.5 text-xs tracking-widest uppercase hover:border-champagne-dark hover:text-champagne-dark transition-colors"
           >
             受注一覧
           </Link>

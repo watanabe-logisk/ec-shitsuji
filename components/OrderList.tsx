@@ -3,21 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Order } from '@/types'
-
-function calcShipDate(shippingDate: string, extraDays = 0): string {
-  if (!shippingDate) return ''
-  const date = new Date(shippingDate)
-  let subtracted = 0
-  while (subtracted < 2 + extraDays) {
-    date.setDate(date.getDate() - 1)
-    const d = date.getDay()
-    if (d !== 0 && d !== 6) subtracted++
-  }
-  const m = date.getMonth() + 1
-  const day = date.getDate()
-  const week = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()]
-  return `${m}/${day}(${week})`
-}
+import { alertDateLabel } from '@/lib/shipping'
 
 export default function OrderList() {
   const router = useRouter()
@@ -135,7 +121,7 @@ export default function OrderList() {
               className={`px-4 py-2 text-xs tracking-widest uppercase transition-colors ${
                 statusFilter === s
                   ? 'bg-navy text-warm-50'
-                  : 'bg-warm-50 text-stone border border-warm-300 hover:border-champagne hover:text-champagne'
+                  : 'bg-warm-50 text-stone border border-warm-300 hover:border-champagne-dark hover:text-champagne-dark'
               }`}
             >
               {filterLabels[s]}
@@ -152,25 +138,25 @@ export default function OrderList() {
             <p className="text-stone text-sm tracking-wide">受注データがありません</p>
           </div>
         ) : (
-          <div className="bg-warm-50 border border-warm-300">
+          <div className="bg-warm-50 border border-warm-300 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-warm-300">
                 <tr>
-                  <th className="px-4 py-3 text-left w-8">
+                  <th className="px-3 py-3 text-left w-8">
                     <input
                       type="checkbox"
                       checked={selected.size === orders.length && orders.length > 0}
                       onChange={toggleAll}
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal">注文番号</th>
-                  <th className="px-4 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal">得意先</th>
-                  <th className="px-4 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal">商品</th>
-                  <th className="px-4 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal">個数</th>
-                  <th className="px-4 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal">出荷予定日</th>
-                  <th className="px-4 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal">配送指定日</th>
-                  <th className="px-4 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal">状態</th>
-                  <th className="px-4 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal">操作</th>
+                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">注文番号</th>
+                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">得意先</th>
+                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">商品</th>
+                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">個数</th>
+                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">出荷予定日</th>
+                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">配送指定日</th>
+                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">状態</th>
+                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-warm-200">
@@ -178,34 +164,39 @@ export default function OrderList() {
                   const isProcessing = processingId === order.id
                   return (
                     <tr key={order.id} className={`hover:bg-warm-100 transition-colors ${selected.has(order.id) ? 'bg-champagne-light' : ''}`}>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <input
                           type="checkbox"
                           checked={selected.has(order.id)}
                           onChange={() => toggleSelect(order.id)}
                         />
                       </td>
-                      <td className="px-4 py-3 text-stone text-sm tabular-nums">
+                      <td className="px-3 py-3 text-stone text-sm tabular-nums">
                         {order.order_number}
                       </td>
-                      <td className="px-4 py-3 font-medium text-ink">{order.customer_name}</td>
-                      <td className="px-4 py-3 text-stone text-sm">{order.product_name}</td>
-                      <td className="px-4 py-3 text-stone text-sm">{order.quantity}</td>
-                      <td className="px-4 py-3 text-sm">
-                        {calcShipDate(order.shipping_date, order.alert_extra_days || 0)
-                          ? (
-                            <span className="text-champagne-dark font-medium">
-                              {calcShipDate(order.shipping_date, order.alert_extra_days || 0)}
-                              {(order.alert_extra_days || 0) > 0 && (
-                                <span className="ml-1 text-xs bg-champagne-light text-champagne-dark px-1 py-0.5">延長</span>
+                      <td className="px-3 py-3 font-medium text-ink">{order.customer_name}</td>
+                      <td className="px-3 py-3 text-stone text-sm">{order.product_name}</td>
+                      <td className="px-3 py-3 text-stone text-sm tabular-nums">{order.quantity}</td>
+                      <td className="px-3 py-3 text-sm">
+                        {(() => {
+                          const extra = order.alert_extra_days || 0
+                          const label = alertDateLabel(order.shipping_date, extra)
+                          if (!label) return <span className="text-stone">—</span>
+                          return (
+                            <span className="text-champagne-dark font-medium whitespace-nowrap">
+                              {label}
+                              {extra > 0 && (
+                                <span className="ml-1 text-xs bg-champagne-light text-champagne-dark px-1 py-0.5">
+                                  +{extra}日
+                                </span>
                               )}
                             </span>
                           )
-                          : <span className="text-stone">—</span>}
+                        })()}
                       </td>
-                      <td className="px-4 py-3 text-stone text-sm">{order.shipping_date}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2.5 py-1 text-xs tracking-wide ${
+                      <td className="px-3 py-3 text-stone text-sm whitespace-nowrap tabular-nums">{order.shipping_date}</td>
+                      <td className="px-3 py-3">
+                        <span className={`inline-block whitespace-nowrap px-2.5 py-1 text-xs tracking-wide ${
                           order.status === 'shipped'
                             ? 'bg-sage-light text-sage'
                             : 'bg-champagne-light text-champagne-dark'
@@ -213,7 +204,7 @@ export default function OrderList() {
                           {order.status === 'shipped' ? '出荷済み' : '出荷待ち'}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 whitespace-nowrap">
                         {isProcessing ? (
                           <span className="text-xs text-stone">処理中...</span>
                         ) : (
@@ -264,7 +255,7 @@ export default function OrderList() {
                   {selectedOrder?.status === 'shipped' && (
                     <button
                       onClick={handleRevertStatus}
-                      className="border border-stone text-stone text-xs tracking-widest uppercase px-5 py-2 hover:bg-stone hover:text-white transition-colors"
+                      className="border border-warm-400 text-warm-400 text-xs tracking-widest uppercase px-5 py-2 hover:bg-warm-400 hover:text-navy transition-colors"
                     >
                       出荷待ちに戻す
                     </button>
@@ -275,7 +266,7 @@ export default function OrderList() {
             <button
               onClick={handleExportCSV}
               disabled={exporting}
-              className="border border-sage text-sage text-xs tracking-widest uppercase px-5 py-2 hover:bg-sage hover:text-white transition-colors disabled:opacity-40"
+              className="border border-sage-bright text-sage-bright text-xs tracking-widest uppercase px-5 py-2 hover:bg-sage-bright hover:text-navy transition-colors disabled:opacity-40"
             >
               {exporting ? '生成中...' : 'CSV出力'}
             </button>
@@ -287,7 +278,7 @@ export default function OrderList() {
             </button>
             <button
               onClick={() => setSelected(new Set())}
-              className="text-xs text-stone hover:text-warm-50 transition-colors tracking-widest uppercase"
+              className="text-xs text-warm-400 hover:text-warm-50 transition-colors tracking-widest uppercase"
             >
               解除
             </button>
