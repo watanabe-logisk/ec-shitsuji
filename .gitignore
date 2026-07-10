@@ -5,3 +5,11 @@ node_modules/
 out/
 *.log
 .DS_Store
+
+# TypeScript のビルドキャッシュ
+tsconfig.tsbuildinfo
+
+# ローカルのツール設定（環境ごとに異なる）
+.claude/settings.local.json
+.agents/
+skills-lock.json
