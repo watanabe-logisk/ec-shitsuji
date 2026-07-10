@@ -24,7 +24,13 @@ export async function GET(request: NextRequest) {
   const date = searchParams.get('date')
   const status = searchParams.get('status')
 
-  let query = supabase.from('orders').select('*').order('shipping_date', { ascending: true })
+  // 出荷待ち（pending）を先に、出荷済み（shipped）を後ろに。
+  // status は 'pending' < 'shipped' の辞書順なので昇順でこの並びになる。
+  let query = supabase
+    .from('orders')
+    .select('*')
+    .order('status', { ascending: true })
+    .order('shipping_date', { ascending: true })
 
   if (date) query = query.eq('shipping_date', date)
   if (status) query = query.eq('status', status)
