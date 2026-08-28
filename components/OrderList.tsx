@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Order } from '@/types'
 import { alertDateLabel } from '@/lib/shipping'
-import { statusClassName, statusLabel } from '@/lib/status'
+import { isOpenStatus, statusClassName, statusLabel } from '@/lib/status'
 
 export default function OrderList() {
   const router = useRouter()
@@ -76,6 +76,21 @@ export default function OrderList() {
     }
   }
 
+  async function handleCancel() {
+    const id = Array.from(selected)[0]
+    const order = orders.find(o => o.id === id)
+    if (!order) return
+    if (!confirm(`${order.customer_name} の受注 ${order.order_number} をキャンセルしますか？
+（受注データは削除されず、状態がキャンセルになります）`)) return
+    await fetch(`/api/orders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' }),
+    })
+    setSelected(new Set())
+    await fetchOrders()
+  }
+
   async function handleDeleteSelected() {
     const count = selected.size
     if (!confirm(`選択した${count}件の受注を削除しますか？`)) return
@@ -88,6 +103,16 @@ export default function OrderList() {
 
   async function handleExportCSV() {
     if (selected.size === 0) return
+    // キャンセル済みの受注をそのまま配送業者へ流すと誤出荷になる
+    const cancelled = orders.filter(o => selected.has(o.id) && o.status === 'cancelled')
+    if (cancelled.length > 0) {
+      const list = cancelled.map(o => `${o.order_number} ${o.customer_name}`).join('\n')
+      if (!confirm(`キャンセル済みの受注が${cancelled.length}件含まれています。
+
+${list}
+
+このままCSVに出力しますか？`)) return
+    }
     setExporting(true)
     const res = await fetch('/api/csv', {
       method: 'POST',
@@ -251,12 +276,20 @@ export default function OrderList() {
                   >
                     コピー
                   </button>
-                  {selectedOrder?.status === 'shipped' && (
+                  {(selectedOrder?.status === 'shipped' || selectedOrder?.status === 'cancelled') && (
                     <button
                       onClick={handleRevertStatus}
                       className="border border-warm-400 text-warm-400 text-xs tracking-widest uppercase px-5 py-2 hover:bg-warm-400 hover:text-navy transition-colors"
                     >
                       出荷待ちに戻す
+                    </button>
+                  )}
+                  {isOpenStatus(selectedOrder?.status ?? '') && (
+                    <button
+                      onClick={handleCancel}
+                      className="border border-warm-400 text-warm-400 text-xs tracking-widest uppercase px-5 py-2 hover:bg-warm-400 hover:text-navy transition-colors"
+                    >
+                      キャンセル
                     </button>
                   )}
                 </>
