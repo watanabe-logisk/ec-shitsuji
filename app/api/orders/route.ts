@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
+import { statusRank } from '@/lib/status'
 
 async function generateOrderNumber(): Promise<string> {
   const today = format(new Date(), 'yyMMdd')
@@ -24,8 +25,9 @@ export async function GET(request: NextRequest) {
   const date = searchParams.get('date')
   const status = searchParams.get('status')
 
-  // 出荷待ち（pending）を先に、出荷済み（shipped）を後ろに。
-  // status は 'pending' < 'shipped' の辞書順なので昇順でこの並びになる。
+  // DB 側の並び順は従来のまま変更しない。
+  // status の辞書順に依存しているが、ここを変えると同着行（状態も配送指定日も
+  // 同じ行）の順序が入れ替わり、運用中の画面の見え方が変わってしまうため。
   let query = supabase
     .from('orders')
     .select('*')
@@ -37,7 +39,13 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+
+  // その上で lib/status.ts の rank による安定ソートを掛ける。
+  // pending(0) < shipped(3) は辞書順 'pending' < 'shipped' と同じ並びなので、
+  // 既存データに対してはこのソートは何も動かさない（＝従来と完全に同じ並び）。
+  // cancelled のように辞書順では先頭に来てしまう状態だけが正しい位置へ移動する。
+  const sorted = [...(data ?? [])].sort((a, b) => statusRank(a.status) - statusRank(b.status))
+  return NextResponse.json(sorted)
 }
 
 async function findOrCreateCustomer(body: Record<string, string>): Promise<string | null> {

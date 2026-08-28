@@ -1,3 +1,5 @@
+import { OrderStatus } from '@/lib/status'
+
 export type Customer = {
   id: string
   name: string
@@ -31,7 +33,7 @@ export type Order = {
   shipping_phone: string
   time_slot: string
   notes: string
-  status: 'pending' | 'shipped'
+  status: OrderStatus
   alert_extra_days: number
   created_at: string
 }

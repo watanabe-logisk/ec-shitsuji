@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Order } from '@/types'
 import { alertDateLabel } from '@/lib/shipping'
+import { statusClassName, statusLabel } from '@/lib/status'
 
 export default function OrderList() {
   const router = useRouter()
@@ -196,12 +197,10 @@ export default function OrderList() {
                       </td>
                       <td className="px-3 py-3 text-stone text-sm whitespace-nowrap tabular-nums">{order.shipping_date}</td>
                       <td className="px-3 py-3">
-                        <span className={`inline-block whitespace-nowrap px-2.5 py-1 text-xs tracking-wide ${
-                          order.status === 'shipped'
-                            ? 'bg-sage-light text-sage'
-                            : 'bg-champagne-light text-champagne-dark'
-                        }`}>
-                          {order.status === 'shipped' ? '出荷済み' : '出荷待ち'}
+                        {/* 以前は「shipped 以外はすべて出荷待ち」と表示していたため、
+                            キャンセル済みの注文が「出荷待ち」に見えて誤出荷を招く状態だった */}
+                        <span className={`inline-block whitespace-nowrap px-2.5 py-1 text-xs tracking-wide ${statusClassName(order.status)}`}>
+                          {statusLabel(order.status)}
                         </span>
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap">
