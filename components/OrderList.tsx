@@ -127,11 +127,17 @@ ${list}
     a.click()
     URL.revokeObjectURL(url)
     setExporting(false)
+
+    // サーバー側で pending / confirmed が「準備中」へ進むので、
+    // 再読み込みしないと画面が「出荷待ち」のまま古い状態を映してしまう
+    setSelected(new Set())
+    await fetchOrders()
   }
 
   const filterLabels: Record<string, string> = {
     '': 'すべて',
     pending: '出荷待ち',
+    preparing: '準備中',
     shipped: '出荷済み',
   }
 
@@ -140,7 +146,7 @@ ${list}
       <div className={selected.size > 0 ? 'pb-20' : ''}>
         {/* フィルター */}
         <div className="flex gap-1 mb-5">
-          {(['', 'pending', 'shipped'] as const).map(s => (
+          {(['', 'pending', 'preparing', 'shipped'] as const).map(s => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
@@ -233,7 +239,9 @@ ${list}
                           <span className="text-xs text-stone">処理中...</span>
                         ) : (
                           <div className="flex items-center gap-3">
-                            {order.status === 'pending' && (
+                            {/* CSV出力で pending → preparing へ進むため、
+                                pending 決め打ちだと出荷済みにできなくなる */}
+                            {isOpenStatus(order.status) && (
                               <button
                                 onClick={() => handleShipped(order.id)}
                                 className="text-xs text-stone hover:text-sage transition-colors"
@@ -276,7 +284,10 @@ ${list}
                   >
                     コピー
                   </button>
-                  {(selectedOrder?.status === 'shipped' || selectedOrder?.status === 'cancelled') && (
+                  {/* preparing も戻せるようにする。CSVを誤って出したときの復旧手段になる */}
+                  {(selectedOrder?.status === 'shipped'
+                    || selectedOrder?.status === 'cancelled'
+                    || selectedOrder?.status === 'preparing') && (
                     <button
                       onClick={handleRevertStatus}
                       className="border border-warm-400 text-warm-400 text-xs tracking-widest uppercase px-5 py-2 hover:bg-warm-400 hover:text-navy transition-colors"

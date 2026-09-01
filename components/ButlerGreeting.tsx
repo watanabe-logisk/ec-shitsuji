@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import Link from 'next/link'
 import { alertDateISO } from '@/lib/shipping'
+import { isOpenStatus } from '@/lib/status'
 
 export default function ButlerGreeting() {
   const [alertOrders, setAlertOrders] = useState<Order[]>([])
@@ -14,11 +15,16 @@ export default function ButlerGreeting() {
   const today = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
-    fetch(`/api/orders?status=pending`)
+    // 以前は status=pending で絞っていたが、CSV出力すると「準備中」へ進むため
+    // それだけでは出荷前の注文を取りこぼす。CSVを出しただけでは物はまだ出ていないので、
+    // 実際に「出荷済み」を押すまでは件数に残し続ける。
+    // 既存データは pending / shipped しか無く、isOpenStatus の結果は従来と一致する。
+    fetch(`/api/orders`)
       .then(r => r.json())
       .then(data => {
         const all = Array.isArray(data) ? data : []
         const alerts = all.filter((order: Order) => {
+          if (!isOpenStatus(order.status)) return false
           const triggerDate = alertDateISO(order.shipping_date, order.alert_extra_days || 0)
           return triggerDate <= today && order.shipping_date >= today
         })
@@ -73,7 +79,7 @@ export default function ButlerGreeting() {
               本日出荷が必要な件数
             </p>
             <p className="text-xs text-champagne-dark mb-3">
-              （本日を出荷期限とする出荷待ち注文）
+              （本日を出荷期限とする未出荷の注文）
             </p>
             <div className="flex items-end gap-4 mb-1">
               <span className="font-display font-light text-champagne-dark leading-none tabular-nums" style={{ fontSize: '5rem' }}>
