@@ -35,9 +35,16 @@ function jstNow(): Date {
 function jstToday(): string {
   return jstNow().toISOString().slice(0, 10)
 }
+/**
+ * 日付に加えて時刻も入れる。
+ * Vercel の Hobby プランは cron の実行時刻精度が ±59分あるため、
+ * 実際に何時に発火したかを通知本文から確認できるようにしておく。
+ */
 function jstTodayLabel(): string {
   const d = jstNow()
-  return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日(${WEEKDAY_LABELS[d.getUTCDay()]})`
+  const hh = String(d.getUTCHours()).padStart(2, '0')
+  const mm = String(d.getUTCMinutes()).padStart(2, '0')
+  return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日(${WEEKDAY_LABELS[d.getUTCDay()]}) ${hh}:${mm}`
 }
 /** 土日か。lib/shipping.ts の営業日計算と揃えて祝日は見ない */
 function isWeekend(): boolean {
