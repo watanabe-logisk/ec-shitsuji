@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Navbar from '@/components/Navbar'
+import CustomerLoginPanel from '@/components/CustomerLoginPanel'
 import { Customer } from '@/types'
 
 const inputClass = 'w-full border border-warm-300 bg-warm-100 px-3 py-2 text-sm text-ink focus:outline-none focus:border-champagne-dark transition-colors'
@@ -12,12 +13,19 @@ export default function CustomersPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editData, setEditData] = useState<Partial<Customer>>({})
   const [saving, setSaving] = useState(false)
+  // 得意先ID → 発行済みのログインID。パスワードは含まない
+  const [logins, setLogins] = useState<Record<string, { email: string; isActive: boolean }>>({})
 
   useEffect(() => {
     fetch('/api/customers').then(r => r.json()).then(data => {
       setCustomers(Array.isArray(data) ? data : [])
       setLoading(false)
     })
+    // 失敗しても一覧は表示できるので握りつぶす
+    fetch('/api/customers/logins')
+      .then(r => r.json())
+      .then(d => setLogins(d && typeof d === 'object' && !d.error ? d : {}))
+      .catch(() => {})
   }, [])
 
   function startEdit(c: Customer) {
@@ -160,6 +168,9 @@ export default function CustomersPage() {
                         キャンセル
                       </button>
                     </div>
+                    {/* ログイン情報は保存ボタンとは独立して即時反映されるので、
+                        編集中の他項目を保存しなくても発行・再発行できる */}
+                    <CustomerLoginPanel customerId={c.id} customerName={c.name} />
                   </div>
                 ) : (
                   /* 表示モード */
@@ -170,6 +181,11 @@ export default function CustomersPage() {
                         {(c.min_order_quantity ?? 1) > 1 && (
                           <span className="ml-2 inline-block bg-warm-200 text-stone px-2 py-0.5 text-xs tracking-wide tabular-nums">
                             最低 {c.min_order_quantity} ケース
+                          </span>
+                        )}
+                        {logins[c.id] && (
+                          <span className="ml-2 inline-block bg-sage-light text-sage px-2 py-0.5 text-xs tracking-wide">
+                            Web発注 {logins[c.id].isActive ? '' : '停止中 '}{logins[c.id].email}
                           </span>
                         )}
                       </p>

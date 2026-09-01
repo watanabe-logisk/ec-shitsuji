@@ -9,7 +9,8 @@
     "test:csv": "node scripts/test-csv-status.mjs",
     "test:alert": "node scripts/test-shipping-alert.mjs",
     "test:holidays": "tsx scripts/test-holidays.ts",
-    "check:holidays": "node scripts/check-holidays.mjs"
+    "check:holidays": "node scripts/check-holidays.mjs",
+    "test:login-api": "node scripts/test-customer-login-api.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
