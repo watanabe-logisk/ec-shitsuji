@@ -12,7 +12,8 @@
     "check:holidays": "node scripts/check-holidays.mjs",
     "test:login-api": "node scripts/test-customer-login-api.mjs",
     "test:audit": "node scripts/test-audit-api.mjs",
-    "test:pages": "node scripts/test-pages.mjs"
+    "test:pages": "node scripts/test-pages.mjs",
+    "test:provision": "node scripts/test-provision.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
