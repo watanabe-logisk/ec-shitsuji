@@ -13,6 +13,20 @@ body {
   line-height: 1.7;
 }
 
+/* Cormorant Garamond の数字は既定でオールドスタイル体になり、
+   1 がローマ数字の I のような形、3・4・7・9 がベースラインより下に落ちる。
+   件数のような大きな数字では数字として読めなくなるため、
+   font-display には高さの揃ったライニング数字を既定で当てる。
+
+   @layer base に置くのは、Tailwind の tabular-nums / lining-nums
+   ユーティリティを打ち消さないため。素の CSS として書くとユーティリティより
+   後に来て font-variant-numeric を丸ごと上書きし、桁揃えが壊れる。 */
+@layer base {
+  .font-display {
+    font-variant-numeric: lining-nums;
+  }
+}
+
 /* 一覧テーブルは行数を稼ぐより1行に収めることを優先する */
 table {
   line-height: 1.4;

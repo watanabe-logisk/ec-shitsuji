@@ -82,7 +82,9 @@ export default function ButlerGreeting() {
               （本日を出荷期限とする未出荷の注文）
             </p>
             <div className="flex items-end gap-4 mb-1">
-              <span className="font-display font-light text-champagne-dark leading-none tabular-nums" style={{ fontSize: '5rem' }}>
+              {/* lining-nums 必須。Cormorant の既定はオールドスタイル数字で、
+                  5rem まで拡大すると 1 や 7 が数字に見えない */}
+              <span className="font-display font-light text-champagne-dark leading-none tabular-nums lining-nums" style={{ fontSize: '5rem' }}>
                 {alertOrders.length}
               </span>
               <div className="pb-2">

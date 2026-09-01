@@ -27,7 +27,7 @@ export default function EditOrderPage() {
         <div className="flex items-center gap-3 mb-6">
           <p className="text-xs tracking-[0.25em] text-stone uppercase">受注修正</p>
           {order && (
-            <span className="text-xs font-display text-stone tracking-wider">
+            <span className="text-xs font-display text-stone tracking-wider tabular-nums lining-nums">
               #{order.order_number}
             </span>
           )}
