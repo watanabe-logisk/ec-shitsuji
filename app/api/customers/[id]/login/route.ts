@@ -25,12 +25,14 @@ async function customerName(id: string): Promise<string | null> {
   return data?.name?.trim() ?? null
 }
 
-export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const name = await customerName(params.id)
+    // Next.js 15 以降、動的ルートの params は Promise になったので await して取り出す
+    const { id } = await params
+    const name = await customerName(id)
     if (!name) return NextResponse.json({ error: '得意先が見つかりません' }, { status: 404 })
 
-    const login = await getCustomerLogin(params.id)
+    const login = await getCustomerLogin(id)
     if (!login) return NextResponse.json({ url: ORDER_APP_URL, login: null })
 
     return NextResponse.json({
@@ -47,13 +49,14 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
  * ログインIDが未発行なら新規発行、発行済みならパスワードだけ作り直す。
  * body: { loginId?: string }  新規発行のときだけ必要
  */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const name = await customerName(params.id)
+    const { id } = await params
+    const name = await customerName(id)
     if (!name) return NextResponse.json({ error: '得意先が見つかりません' }, { status: 404 })
 
     const body = await request.json().catch(() => ({}))
-    const existing = await getCustomerLogin(params.id)
+    const existing = await getCustomerLogin(id)
 
     let login
     if (existing) {
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       if (!loginId.trim()) {
         return NextResponse.json({ error: 'ログインIDを入力してください' }, { status: 400 })
       }
-      login = await createCustomerLogin(params.id, name, loginId)
+      login = await createCustomerLogin(id, name, loginId)
     }
 
     return NextResponse.json({
