@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { alertDateISO } from '@/lib/shipping'
+import { alertDateISO, isBusinessDay } from '@/lib/shipping'
 import { isOpenStatus, statusLabel } from '@/lib/status'
 import { buildShippingAlertMessage, postToChatwork, ShippingAlertItem } from '@/lib/chatwork'
 import { Order } from '@/types'
@@ -51,10 +51,18 @@ function jstTodayLabel(): string {
   const mm = String(d.getUTCMinutes()).padStart(2, '0')
   return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日(${WEEKDAY_LABELS[d.getUTCDay()]}) ${hh}:${mm}`
 }
-/** 土日か。lib/shipping.ts の営業日計算と揃えて祝日は見ない */
-function isWeekend(): boolean {
-  const day = jstNow().getUTCDay()
-  return day === 0 || day === 6
+/**
+ * 今日が休業日（土日祝）か。
+ * lib/shipping.ts の isBusinessDay と同じ判定を使うので、
+ * 出荷期限の計算と休業日の扱いがズレることはない。
+ *
+ * JST の壁時計をそのままローカル時刻の Date に組み直して渡す。
+ * jstNow() は UTC アクセサで読む前提の Date なので、
+ * getDay() を使う isBusinessDay にそのまま渡すと日付がずれる。
+ */
+function isHolidayToday(): boolean {
+  const d = jstNow()
+  return !isBusinessDay(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
 }
 
 /**
@@ -117,9 +125,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, dryRun: true, date: today, count: items.length, overdue, message })
   }
 
-  // 0件の休業日（土日）は送らない。平日の0件は「通知経路が生きている」証拠として送る。
+  // 0件の休業日（土日祝）は送らない。営業日の0件は「通知経路が生きている」証拠として送る。
   // 沈黙が「0件」なのか「壊れている」のか区別できないのが、この仕組みで最も危険なため。
-  if (items.length === 0 && isWeekend()) {
+  if (items.length === 0 && isHolidayToday()) {
     return NextResponse.json({ ok: true, skipped: '休業日で対象0件', date: today, count: 0 })
   }
 
