@@ -122,6 +122,29 @@ export default function CustomersPage() {
                         className={inputClass}
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs tracking-widest text-stone uppercase mb-1">
+                        最低注文ケース数
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={999}
+                        value={editData.min_order_quantity ?? 1}
+                        onChange={e => {
+                          const v = parseInt(e.target.value, 10)
+                          setEditData(d => ({
+                            ...d,
+                            min_order_quantity: Number.isNaN(v) ? 1 : Math.min(999, Math.max(1, v)),
+                          }))
+                        }}
+                        className={`${inputClass} w-32 tabular-nums`}
+                      />
+                      <p className="text-xs text-stone mt-1 leading-relaxed">
+                        顧客のWeb発注画面で初期値になり、これ未満は発注できなくなります。1 なら制限なし。
+                        こちらから登録する受注は制限されませんが、下回ると確認が出ます。
+                      </p>
+                    </div>
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => handleSave(c.id)}
@@ -142,7 +165,14 @@ export default function CustomersPage() {
                   /* 表示モード */
                   <div className="px-5 py-4 flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="font-medium text-ink text-sm">{c.name}</p>
+                      <p className="font-medium text-ink text-sm">
+                        {c.name}
+                        {(c.min_order_quantity ?? 1) > 1 && (
+                          <span className="ml-2 inline-block bg-warm-200 text-stone px-2 py-0.5 text-xs tracking-wide tabular-nums">
+                            最低 {c.min_order_quantity} ケース
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-stone mt-0.5">
                         {c.contact_name && <span className="mr-3">{c.contact_name}</span>}
                         {c.postal_code && <span className="mr-1">〒{c.postal_code}</span>}

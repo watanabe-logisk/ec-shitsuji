@@ -80,9 +80,21 @@ export default function OrderForm({ orderId, initialData }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     const product = PRODUCTS.find(p => p.id === productId)
     const customer = customers.find(c => c.id === customerId)
+
+    // 最低注文ケース数を下回っていたら確認する。
+    // 顧客のWeb発注では弾くが、こちらはスポットやサンプルなど
+    // 承知のうえで下回る場面があるため、止めずに確認だけにする。
+    const min = customer?.min_order_quantity ?? 1
+    if (customer && quantity < min) {
+      const ok = confirm(
+        `${customer.name} の最低注文ケース数は ${min} ケースですが、${quantity} ケースで登録しようとしています。\n\nこのまま登録しますか？`
+      )
+      if (!ok) return
+    }
+
+    setLoading(true)
     const body = {
       customer_id: customerId || null,
       customer_name: useCustomAddress ? shippingName : (customer?.name ?? shippingName),

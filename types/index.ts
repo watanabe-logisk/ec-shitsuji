@@ -8,6 +8,8 @@ export type Customer = {
   address: string
   phone: string
   email?: string
+  /** 1回の発注で必要な最低ケース数。顧客のWeb発注画面で初期値かつ下限になる。1 なら制限なし */
+  min_order_quantity?: number
 }
 
 export type Product = {
