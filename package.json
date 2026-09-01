@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:csv": "node scripts/test-csv-status.mjs"
+    "test:csv": "node scripts/test-csv-status.mjs",
+    "test:alert": "node scripts/test-shipping-alert.mjs"
   },
   "dependencies": {
     "next": "^14.2.0",

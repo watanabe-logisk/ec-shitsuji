@@ -4,7 +4,15 @@ import { SESSION_COOKIE, getSessionToken } from '@/lib/auth'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isPublicAsset = /\.(png|jpg|jpeg|gif|svg|ico|webp|woff|woff2)$/i.test(pathname)
-  if (isPublicAsset || pathname.startsWith('/api/auth') || pathname === '/') {
+  // /api/cron はログインCookieを持たないスケジューラから叩かれるので、
+  // ここで弾くと通知が黙って飛ばなくなる。代わりに CRON_SECRET で守る
+  //（ルート側で Authorization ヘッダーを検証している）。
+  if (
+    isPublicAsset ||
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/cron') ||
+    pathname === '/'
+  ) {
     return NextResponse.next()
   }
 
