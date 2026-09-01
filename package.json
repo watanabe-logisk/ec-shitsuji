@@ -13,7 +13,9 @@
     "test:login-api": "node scripts/test-customer-login-api.mjs",
     "test:audit": "node scripts/test-audit-api.mjs",
     "test:pages": "node scripts/test-pages.mjs",
-    "test:provision": "node scripts/test-provision.mjs"
+    "test:provision": "node scripts/test-provision.mjs",
+    "check:email": "node scripts/check-email.mjs",
+    "test:emails": "node scripts/test-email-recipients.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

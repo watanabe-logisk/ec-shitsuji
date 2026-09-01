@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Navbar from '@/components/Navbar'
 import CustomerLoginPanel from '@/components/CustomerLoginPanel'
+import CustomerEmailPanel from '@/components/CustomerEmailPanel'
 import { Customer } from '@/types'
 
 const inputClass = 'w-full border border-warm-300 bg-warm-100 px-3 py-2 text-sm text-ink focus:outline-none focus:border-champagne-dark transition-colors'
@@ -15,6 +16,8 @@ export default function CustomersPage() {
   const [saving, setSaving] = useState(false)
   // 得意先ID → 発行済みのログインID。パスワードは含まない
   const [logins, setLogins] = useState<Record<string, { email: string; isActive: boolean }>>({})
+  // 得意先ID → 有効な通知メール宛先の件数。アドレスそのものは持たない
+  const [mailCounts, setMailCounts] = useState<Record<string, number>>({})
 
   useEffect(() => {
     fetch('/api/customers').then(r => r.json()).then(data => {
@@ -25,6 +28,10 @@ export default function CustomersPage() {
     fetch('/api/customers/logins')
       .then(r => r.json())
       .then(d => setLogins(d && typeof d === 'object' && !d.error ? d : {}))
+      .catch(() => {})
+    fetch('/api/customers/emails')
+      .then(r => r.json())
+      .then(d => setMailCounts(d && typeof d === 'object' && !d.error ? d : {}))
       .catch(() => {})
   }, [])
 
@@ -171,6 +178,10 @@ export default function CustomersPage() {
                     {/* ログイン情報は保存ボタンとは独立して即時反映されるので、
                         編集中の他項目を保存しなくても発行・再発行できる */}
                     <CustomerLoginPanel customerId={c.id} customerName={c.name} />
+                    <CustomerEmailPanel
+                      customerId={c.id}
+                      onChanged={n => setMailCounts(m => ({ ...m, [c.id]: n }))}
+                    />
                   </div>
                 ) : (
                   /* 表示モード */
@@ -186,6 +197,15 @@ export default function CustomersPage() {
                         {logins[c.id] && (
                           <span className="ml-2 inline-block bg-sage-light text-sage px-2 py-0.5 text-xs tracking-wide">
                             Web発注 {logins[c.id].isActive ? '' : '停止中 '}{logins[c.id].email}
+                          </span>
+                        )}
+                        {(mailCounts[c.id] ?? 0) > 0 ? (
+                          <span className="ml-2 inline-block bg-warm-200 text-stone px-2 py-0.5 text-xs tracking-wide tabular-nums">
+                            通知先 {mailCounts[c.id]}件
+                          </span>
+                        ) : (
+                          <span className="ml-2 inline-block bg-champagne-light text-champagne-dark px-2 py-0.5 text-xs tracking-wide">
+                            通知先 未登録
                           </span>
                         )}
                       </p>
