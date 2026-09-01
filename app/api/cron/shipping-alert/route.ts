@@ -12,6 +12,11 @@ import { Order } from '@/types'
  * 抽出条件はダッシュボードの ButlerGreeting と同一にしてある。
  * lib/shipping.ts の alertDateISO と lib/status.ts の isOpenStatus を
  * そのまま使うので、通知の件数と画面の件数がズレることはない。
+ *
+ * 【実行時刻】vercel.json の "0 23 * * *" は UTC 表記で、日本時間の 8:00。
+ * Vercel の Hobby プランは実行時刻の精度が ±59分あるため、実際には
+ * 8:00〜8:59 のどこかで発火する。8:00 を指定しておけば遅れても始業前に届く。
+ * 通知本文に実際の発火時刻を入れてあるので、ズレ幅はそれで確認できる。
  */
 
 export const dynamic = 'force-dynamic'
@@ -26,7 +31,7 @@ const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
 
 /**
  * Vercel の実行環境は UTC なので、JST の「今日」を明示的に求める。
- * 朝8:45 JST は前日23:45 UTC にあたり、素朴に new Date() を使うと
+ * 朝8:00 JST は前日23:00 UTC にあたり、素朴に new Date() を使うと
  * 1日ずれた日付で判定してしまう。
  */
 function jstNow(): Date {
