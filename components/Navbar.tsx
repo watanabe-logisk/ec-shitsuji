@@ -46,6 +46,7 @@ export default function Navbar() {
         </Link>
         {navLink('/orders', '受注一覧')}
         {navLink('/customers', '得意先')}
+        {navLink('/audit', '操作履歴')}
         <button
           onClick={handleLogout}
           className="text-xs tracking-widest text-warm-400 hover:text-warm-50 transition-colors uppercase"
