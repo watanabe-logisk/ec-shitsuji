@@ -47,6 +47,7 @@ export default function Navbar() {
         {navLink('/orders', '受注一覧')}
         {navLink('/shipments', '出荷取込')}
         {navLink('/customers', '得意先')}
+        {navLink('/mail', '通知メール')}
         {navLink('/audit', '操作履歴')}
         <button
           onClick={handleLogout}
