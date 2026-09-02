@@ -6,6 +6,42 @@ import { Order } from '@/types'
 import { alertDateLabel } from '@/lib/shipping'
 import { isOpenStatus, statusClassName, statusLabel } from '@/lib/status'
 
+/**
+ * 出荷済みを配送指定日の月ごとにまとめる。
+ *
+ * 受注が増えると出荷済みが一覧を埋めてしまい、これから出す分が見えなくなる。
+ * 出荷済みは「終わったもの」なので、月ごとに畳んで下に置く。
+ * 消したり別のテーブルへ移したりはしない。畳んでいるだけなので、
+ * 開けば今までどおり編集も出荷待ちへの差し戻しもできる。
+ */
+function monthKeyOf(order: Order): string {
+  const m = (order.shipping_date ?? '').match(/^(\d{4})-(\d{2})/)
+  return m ? `${m[1]}-${m[2]}` : ''
+}
+
+function monthLabel(key: string): string {
+  if (!key) return '配送指定日なし'
+  const [y, m] = key.split('-')
+  return `${Number(y)}年${Number(m)}月`
+}
+
+function groupByMonth(orders: Order[]): { key: string; label: string; orders: Order[] }[] {
+  const map: Record<string, Order[]> = {}
+  for (const o of orders) {
+    const k = monthKeyOf(o)
+    if (!map[k]) map[k] = []
+    map[k].push(o)
+  }
+  return Object.keys(map)
+    .sort((a, b) => {
+      // 日付なしは最後に回す
+      if (!a) return 1
+      if (!b) return -1
+      return a < b ? 1 : -1        // 新しい月が上
+    })
+    .map(key => ({ key, label: monthLabel(key), orders: map[key] }))
+}
+
 export default function OrderList() {
   const router = useRouter()
   const [orders, setOrders] = useState<Order[]>([])
@@ -14,6 +50,8 @@ export default function OrderList() {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [exporting, setExporting] = useState(false)
   const [processingId, setProcessingId] = useState<string | null>(null)
+  // 開いている月。既定はすべて畳む
+  const [openMonths, setOpenMonths] = useState<Set<string>>(new Set())
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -34,8 +72,23 @@ export default function OrderList() {
     })
   }
 
-  function toggleAll() {
-    setSelected(selected.size === orders.length ? new Set() : new Set(orders.map(o => o.id)))
+  function toggleMonth(key: string) {
+    setOpenMonths(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  /** 見えている行だけを対象にする。畳んだ月の分まで選ばれると事故になる */
+  function toggleGroup(list: Order[]) {
+    const ids = list.map(o => o.id)
+    const allChosen = ids.every(id => selected.has(id))
+    setSelected(prev => {
+      const next = new Set(prev)
+      for (const id of ids) allChosen ? next.delete(id) : next.add(id)
+      return next
+    })
   }
 
   async function handleShipped(id: string) {
@@ -141,6 +194,111 @@ ${list}
     shipped: '出荷済み',
   }
 
+  const th = 'px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap'
+
+  function table(list: Order[]) {
+    return (
+      <div className="bg-warm-50 border border-warm-300 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-warm-300">
+            <tr>
+              <th className="px-3 py-3 text-left w-8">
+                <input
+                  type="checkbox"
+                  checked={list.length > 0 && list.every(o => selected.has(o.id))}
+                  onChange={() => toggleGroup(list)}
+                />
+              </th>
+              <th className={th}>注文番号</th>
+              <th className={th}>得意先</th>
+              <th className={th}>商品</th>
+              <th className={th}>個数</th>
+              <th className={th}>出荷予定日</th>
+              <th className={th}>配送指定日</th>
+              <th className={th}>状態</th>
+              <th className={th}>操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-warm-200">
+            {list.map(order => {
+              const isProcessing = processingId === order.id
+              return (
+                <tr key={order.id} className={`hover:bg-warm-100 transition-colors ${selected.has(order.id) ? 'bg-champagne-light' : ''}`}>
+                  <td className="px-3 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(order.id)}
+                      onChange={() => toggleSelect(order.id)}
+                    />
+                  </td>
+                  <td className="px-3 py-3 text-stone text-sm tabular-nums">
+                    {order.order_number}
+                  </td>
+                  <td className="px-3 py-3 font-medium text-ink">{order.customer_name}</td>
+                  <td className="px-3 py-3 text-stone text-sm">{order.product_name}</td>
+                  <td className="px-3 py-3 text-stone text-sm tabular-nums">{order.quantity}</td>
+                  <td className="px-3 py-3 text-sm">
+                    {(() => {
+                      const extra = order.alert_extra_days || 0
+                      const label = alertDateLabel(order.shipping_date, extra)
+                      if (!label) return <span className="text-stone">—</span>
+                      return (
+                        <span className="text-champagne-dark font-medium whitespace-nowrap">
+                          {label}
+                          {extra > 0 && (
+                            <span className="ml-1 text-xs bg-champagne-light text-champagne-dark px-1 py-0.5">
+                              +{extra}日
+                            </span>
+                          )}
+                        </span>
+                      )
+                    })()}
+                  </td>
+                  <td className="px-3 py-3 text-stone text-sm whitespace-nowrap tabular-nums">{order.shipping_date}</td>
+                  <td className="px-3 py-3">
+                    {/* 以前は「shipped 以外はすべて出荷待ち」と表示していたため、
+                        キャンセル済みの注文が「出荷待ち」に見えて誤出荷を招く状態だった */}
+                    <span className={`inline-block whitespace-nowrap px-2.5 py-1 text-xs tracking-wide ${statusClassName(order.status)}`}>
+                      {statusLabel(order.status)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    {isProcessing ? (
+                      <span className="text-xs text-stone">処理中...</span>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        {/* CSV出力で pending → preparing へ進むため、
+                            pending 決め打ちだと出荷済みにできなくなる */}
+                        {isOpenStatus(order.status) && (
+                          <button
+                            onClick={() => handleShipped(order.id)}
+                            className="text-xs text-stone hover:text-sage transition-colors"
+                          >
+                            出荷済み
+                          </button>
+                        )}
+                        <button
+                          onClick={() => router.push(`/orders/${order.id}/edit`)}
+                          className="text-xs text-stone hover:text-navy transition-colors"
+                        >
+                          編集
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  const shipped = orders.filter(o => o.status === 'shipped')
+  const current = orders.filter(o => o.status !== 'shipped')
+  const months = groupByMonth(shipped)
+
   return (
     <>
       <div className={selected.size > 0 ? 'pb-20' : ''}>
@@ -149,7 +307,7 @@ ${list}
           {(['', 'pending', 'preparing', 'shipped'] as const).map(s => (
             <button
               key={s}
-              onClick={() => setStatusFilter(s)}
+              onClick={() => { setStatusFilter(s); setSelected(new Set()) }}
               className={`px-4 py-2 text-xs tracking-widest uppercase transition-colors ${
                 statusFilter === s
                   ? 'bg-navy text-warm-50'
@@ -170,99 +328,58 @@ ${list}
             <p className="text-stone text-sm tracking-wide">受注データがありません</p>
           </div>
         ) : (
-          <div className="bg-warm-50 border border-warm-300 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-warm-300">
-                <tr>
-                  <th className="px-3 py-3 text-left w-8">
-                    <input
-                      type="checkbox"
-                      checked={selected.size === orders.length && orders.length > 0}
-                      onChange={toggleAll}
-                    />
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">注文番号</th>
-                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">得意先</th>
-                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">商品</th>
-                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">個数</th>
-                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">出荷予定日</th>
-                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">配送指定日</th>
-                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">状態</th>
-                  <th className="px-3 py-3 text-left text-xs tracking-widest text-stone uppercase font-normal whitespace-nowrap">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-warm-200">
-                {orders.map(order => {
-                  const isProcessing = processingId === order.id
-                  return (
-                    <tr key={order.id} className={`hover:bg-warm-100 transition-colors ${selected.has(order.id) ? 'bg-champagne-light' : ''}`}>
-                      <td className="px-3 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selected.has(order.id)}
-                          onChange={() => toggleSelect(order.id)}
-                        />
-                      </td>
-                      <td className="px-3 py-3 text-stone text-sm tabular-nums">
-                        {order.order_number}
-                      </td>
-                      <td className="px-3 py-3 font-medium text-ink">{order.customer_name}</td>
-                      <td className="px-3 py-3 text-stone text-sm">{order.product_name}</td>
-                      <td className="px-3 py-3 text-stone text-sm tabular-nums">{order.quantity}</td>
-                      <td className="px-3 py-3 text-sm">
-                        {(() => {
-                          const extra = order.alert_extra_days || 0
-                          const label = alertDateLabel(order.shipping_date, extra)
-                          if (!label) return <span className="text-stone">—</span>
-                          return (
-                            <span className="text-champagne-dark font-medium whitespace-nowrap">
-                              {label}
-                              {extra > 0 && (
-                                <span className="ml-1 text-xs bg-champagne-light text-champagne-dark px-1 py-0.5">
-                                  +{extra}日
-                                </span>
-                              )}
+          <div className="space-y-6">
+            {/* まだ出していないもの。出荷済みだけを下に分けるので、
+                キャンセル済みなどはこれまでどおりここに残す */}
+            {current.length > 0 && (
+              <div>
+                {shipped.length > 0 && (
+                  <p className="text-xs tracking-widest text-stone uppercase mb-2">
+                    進行中　{current.length}件
+                  </p>
+                )}
+                {table(current)}
+              </div>
+            )}
+
+            {current.length === 0 && shipped.length > 0 && statusFilter !== 'shipped' && (
+              <div className="bg-warm-50 border border-warm-300 p-10 text-center">
+                <p className="text-stone text-sm tracking-wide">進行中の受注はありません</p>
+              </div>
+            )}
+
+            {/* 出荷済みは配送指定日の月ごとに畳む */}
+            {shipped.length > 0 && (
+              <div>
+                <p className="text-xs tracking-widest text-stone uppercase mb-2">
+                  出荷済み　{shipped.length}件
+                </p>
+                <div className="space-y-2">
+                  {months.map(g => {
+                    const isOpen = openMonths.has(g.key)
+                    const chosen = g.orders.filter(o => selected.has(o.id)).length
+                    return (
+                      <div key={g.key}>
+                        <button
+                          onClick={() => toggleMonth(g.key)}
+                          className="w-full bg-warm-50 border border-warm-300 px-4 py-3 flex items-center gap-3 hover:border-champagne-dark transition-colors text-left"
+                        >
+                          <span className="text-stone text-xs w-3">{isOpen ? '−' : '+'}</span>
+                          <span className="text-ink text-sm">{g.label}</span>
+                          <span className="text-xs text-stone tabular-nums">{g.orders.length}件</span>
+                          {chosen > 0 && (
+                            <span className="text-xs bg-champagne-light text-champagne-dark px-2 py-0.5 tracking-wide tabular-nums">
+                              {chosen}件選択中
                             </span>
-                          )
-                        })()}
-                      </td>
-                      <td className="px-3 py-3 text-stone text-sm whitespace-nowrap tabular-nums">{order.shipping_date}</td>
-                      <td className="px-3 py-3">
-                        {/* 以前は「shipped 以外はすべて出荷待ち」と表示していたため、
-                            キャンセル済みの注文が「出荷待ち」に見えて誤出荷を招く状態だった */}
-                        <span className={`inline-block whitespace-nowrap px-2.5 py-1 text-xs tracking-wide ${statusClassName(order.status)}`}>
-                          {statusLabel(order.status)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        {isProcessing ? (
-                          <span className="text-xs text-stone">処理中...</span>
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            {/* CSV出力で pending → preparing へ進むため、
-                                pending 決め打ちだと出荷済みにできなくなる */}
-                            {isOpenStatus(order.status) && (
-                              <button
-                                onClick={() => handleShipped(order.id)}
-                                className="text-xs text-stone hover:text-sage transition-colors"
-                              >
-                                出荷済み
-                              </button>
-                            )}
-                            <button
-                              onClick={() => router.push(`/orders/${order.id}/edit`)}
-                              className="text-xs text-stone hover:text-navy transition-colors"
-                            >
-                              編集
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                          )}
+                        </button>
+                        {isOpen && <div className="mt-1">{table(g.orders)}</div>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
