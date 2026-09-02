@@ -74,7 +74,11 @@ if (!anonKey) {
 console.log('\n【一覧のバッジ】');
 const list = await fetch(`${BASE_URL}/api/customers/logins`, { headers: { Cookie: COOKIE } });
 const map = await list.json();
-check('全10社ぶん返る', Object.keys(map).length === 10, `${Object.keys(map).length}社`);
+// 社数を固定すると得意先が増えるたびに落ちる。ログインを発行済みの数と突き合わせる
+const { count: linkCount } = await db
+  .from('customer_users').select('*', { count: 'exact', head: true });
+check('ログイン発行済みの得意先がすべて返る',
+  Object.keys(map).length === linkCount, `APIは${Object.keys(map).length}社 / DBは${linkCount}社`);
 check('  パスワードは含まれない', !JSON.stringify(map).includes(json.login.password));
 
 console.log('\n【存在しない得意先】');

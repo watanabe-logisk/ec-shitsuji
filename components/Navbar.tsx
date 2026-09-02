@@ -45,6 +45,7 @@ export default function Navbar() {
           + 受注登録
         </Link>
         {navLink('/orders', '受注一覧')}
+        {navLink('/shipments', '出荷取込')}
         {navLink('/customers', '得意先')}
         {navLink('/audit', '操作履歴')}
         <button
