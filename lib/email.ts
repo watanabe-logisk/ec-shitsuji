@@ -197,7 +197,8 @@ export function buildShippedMail(o: ShippedMail): { subject: string; body: strin
     body: [
       greetingFor(o.customerName, o.recipientLabel),
       '',
-      'ご注文いただいた商品を発送いたしました。',
+      'この度はご注文いただき誠にありがとうございます。',
+      'ご注文の商品を発送いたしましたので、お知らせいたします。',
       '',
       '───────────────────────',
       `注文番号　　: ${o.orderNumber}`,
