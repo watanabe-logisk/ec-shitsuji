@@ -15,7 +15,8 @@
     "test:pages": "node scripts/test-pages.mjs",
     "test:provision": "node scripts/test-provision.mjs",
     "check:email": "node scripts/check-email.mjs",
-    "test:emails": "node scripts/test-email-recipients.mjs"
+    "test:emails": "node scripts/test-email-recipients.mjs",
+    "test:greeting": "node scripts/test-greeting.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

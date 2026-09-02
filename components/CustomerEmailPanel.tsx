@@ -7,6 +7,7 @@ import { maskEmail } from '@/lib/maskEmail'
  * 得意先の通知メール宛先。
  *
  * 1得意先に複数登録できる（発注担当と経理で分けたい場合など）。
+ * 担当者名はメール冒頭の宛名になる。空なら「会社名 御中」。
  * 宛先が1件も無いと通知は送られないので、その状態が分かるようにしている。
  *
  * 登録済みのアドレスは既定で伏せ字にする。画面を人に見せるときに
@@ -174,8 +175,8 @@ export default function CustomerEmailPanel({
         <input
           value={label}
           onChange={e => setLabel(e.target.value)}
-          placeholder="担当（任意）"
-          className="border border-warm-300 bg-warm-100 px-3 py-2 text-sm text-ink focus:outline-none focus:border-champagne-dark w-32"
+          placeholder="担当者名（任意）"
+          className="border border-warm-300 bg-warm-100 px-3 py-2 text-sm text-ink focus:outline-none focus:border-champagne-dark w-40"
         />
         <button
           onClick={add}
@@ -185,10 +186,17 @@ export default function CustomerEmailPanel({
           登録
         </button>
       </div>
-      <p className="text-xs text-stone mt-1 leading-relaxed">
-        複数登録できます。「発注担当」「経理」のように分けたい場合にお使いください。
-        登録済みのアドレスは伏せ字で表示されます。
-      </p>
+      <div className="text-xs text-stone mt-1 leading-relaxed space-y-0.5">
+        <p>
+          担当者名はメールの宛名になります。「宮崎」でも「宮崎様」でも
+          <span className="text-ink">宮崎様</span> と表示されます（様が重なることはありません）。
+        </p>
+        <p>
+          空欄にすると <span className="text-ink">{'{会社名}'} 御中</span> になります。
+          個人のお客様は、会社名と同じ名前を入れると1行になります。
+        </p>
+        <p>宛先は複数登録できます。登録済みのアドレスは伏せ字で表示されます。</p>
+      </div>
 
       {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
     </div>

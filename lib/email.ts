@@ -1,9 +1,9 @@
 /**
  * 顧客への通知メール。
  *
- * ★ 発注アプリ aquajacket-order/lib/email.ts と同じ内容にすること。
+ * ★ 管理アプリ EC-app/lib/email.ts と同じ内容にすること。
  *   2つは別リポジトリで共有できないため、同じものを2箇所に持っている。
- *   文面を直したら両方直す。`npm run check:email` で一致を確認できる。
+ *   文面を直したら両方直す。EC-app の `npm run check:email` で一致を確認できる。
  *
  * 送信は Resend（無料枠 月3,000通）を使う。
  * 環境変数が未設定なら何もしない（ローカルで誤送信しないように）。
@@ -81,6 +81,8 @@ export async function sendEmail(
 
 export type OrderMail = {
   customerName: string
+  /** 通知先に登録された担当者名。空なら会社名＋御中になる */
+  recipientLabel: string
   orderNumber: string
   productName: string
   quantity: number
@@ -98,11 +100,65 @@ const SIGNATURE = [
   '━━━━━━━━━━━━━━━━━━━━━━━━',
 ].join('\n')
 
+/**
+ * メールの冒頭の宛名を作る。
+ *
+ *   宛先の担当者名あり  ->  南総カントリークラブ / 宮崎様（2行）
+ *   担当者名なし        ->  ネストホテル半蔵門 御中
+ *   会社名＝担当者名    ->  吉田美恵子様（個人のお客様。1行）
+ *
+ * 「宮崎様」と入力されても「宮崎様様」にはしない。
+ * 逆に「経理ご担当者様」のように敬称込みで入れられた場合は
+ * そのまま尊重する。どちらで入力されても正しくなるようにしている。
+ *
+ * 個人のお客様に「御中」を付けるのは誤りなので、
+ * 会社名と担当者名が同じ場合は1行にまとめる。
+ */
+/** 末尾の敬称。付いていれば尊重し、無ければ「様」を補う */
+const HONORIFIC_TAIL = /[\s　]*(様|さま|サマ|殿|どの|さん|御中|各位)$/
+
+function flatten(s: string): string {
+  return s.replace(/[\s　]/g, '')
+}
+
+export function greetingFor(customerName: string, recipientLabel: string): string {
+  const name = customerName.trim()
+  const label = recipientLabel.trim()
+  if (!label) return `${name} 御中`
+
+  const named = HONORIFIC_TAIL.test(label) ? label : `${label}様`
+
+  // 個人のお客様。会社名の行と担当者名の行が同じものになってしまうので1行にする。
+  // 「吉田美恵子」と「吉田美恵子様」のように敬称の有無だけが違う場合も同じ人とみなす
+  const bare = label.replace(HONORIFIC_TAIL, '')
+  if (flatten(name) === flatten(bare)) return named
+
+  return `${name}\n${named}`
+}
+
+/**
+ * お届け先の表示。
+ *
+ *   通常のお届け先（大貫）
+ *   ハウス売店                 ← 担当者名が「ハウス売店ご担当者様」の場合
+ *
+ * 納品先の名前と担当者名が重なっている登録が実際にあり、
+ * そのまま並べると「ハウス売店（ハウス売店ご担当者様）」と読みにくくなる。
+ * 誰宛かは冒頭の宛名で分かるので、重なっている場合は納品先だけにする。
+ */
+export function shipToLine(addressLabel: string, contactName: string): string {
+  const label = addressLabel.trim()
+  const contact = contactName.trim()
+  if (!contact) return label
+  if (flatten(contact).indexOf(flatten(label)) >= 0) return label
+  return `${label}（${contact}）`
+}
+
 export function buildReceivedMail(o: OrderMail): { subject: string; body: string } {
   return {
     subject: `【AQUA JACKET】ご注文を承りました（${o.orderNumber}）`,
     body: [
-      `${o.customerName} 御中`,
+      greetingFor(o.customerName, o.recipientLabel),
       '',
       'いつもご利用いただきありがとうございます。',
       '下記の内容でご注文を承りました。',
@@ -111,7 +167,7 @@ export function buildReceivedMail(o: OrderMail): { subject: string; body: string
       `注文番号　　: ${o.orderNumber}`,
       `商品　　　　: ${o.productName}`,
       `数量　　　　: ${o.quantity} ケース`,
-      `お届け先　　: ${o.addressLabel}${o.contactName ? `（${o.contactName}）` : ''}`,
+      `お届け先　　: ${shipToLine(o.addressLabel, o.contactName)}`,
       `希望納品日　: ${o.deliveryDateLabel}`,
       `配送時間帯　: ${o.timeSlot}`,
       '───────────────────────',
@@ -139,7 +195,7 @@ export function buildShippedMail(o: ShippedMail): { subject: string; body: strin
   return {
     subject: `【AQUA JACKET】商品を発送しました（${o.orderNumber}）`,
     body: [
-      `${o.customerName} 御中`,
+      greetingFor(o.customerName, o.recipientLabel),
       '',
       'ご注文いただいた商品を発送いたしました。',
       '',
@@ -147,7 +203,7 @@ export function buildShippedMail(o: ShippedMail): { subject: string; body: strin
       `注文番号　　: ${o.orderNumber}`,
       `商品　　　　: ${o.productName}`,
       `数量　　　　: ${o.quantity} ケース`,
-      `お届け先　　: ${o.addressLabel}${o.contactName ? `（${o.contactName}）` : ''}`,
+      `お届け先　　: ${shipToLine(o.addressLabel, o.contactName)}`,
       `お届け予定日: ${o.deliveryDateLabel}`,
       '',
       `配送業者　　: ${o.carrierName}`,
