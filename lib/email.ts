@@ -197,7 +197,6 @@ export function buildShippedMail(o: ShippedMail): { subject: string; body: strin
     body: [
       greetingFor(o.customerName, o.recipientLabel),
       '',
-      'この度はご注文いただき誠にありがとうございます。',
       'ご注文の商品を発送いたしましたので、お知らせいたします。',
       '',
       '───────────────────────',
@@ -216,6 +215,9 @@ export function buildShippedMail(o: ShippedMail): { subject: string; body: strin
         : `配送状況は下記よりご確認いただけます。\n${o.trackingUrl}`,
       '',
       '※ 配送状況が反映されるまで、発送から数時間かかる場合がございます。',
+      '',
+      'この度はご注文いただきありがとうございました。',
+      '到着まで今しばらくお待ちいただきますようお願い申し上げます。',
       '',
       SIGNATURE,
     ].join('\n'),
