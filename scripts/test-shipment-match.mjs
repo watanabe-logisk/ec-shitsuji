@@ -120,16 +120,28 @@ c('株式会社の有無は無視して同じ相手とみなす',
 c('無関係な名前は同じ相手としない',
   !m.looksLikeSameParty('南総カントリークラブ', 'ネストホテル半蔵門'));
 
-console.log('\n【実物のCSV】');
-const CSV = 'C:/Users/watan/Downloads/出荷実績(注文単位).csv';
-if (fs.existsSync(CSV)) {
-  const rows = wms.parseShipmentCsv(fs.readFileSync(CSV));
-  c('Shift_JISのまま読める', rows.length === 1 && rows[0].shipToName.includes('ネストホテル'), JSON.stringify(rows[0]?.shipToName));
-  c('お問合せ番号が取れる', rows[0].trackingNumber === '66435973800');
-  c('出荷日を日付にできる', rows[0].shippedOn === '2026-09-01');
+console.log('\n【WMSと同じ形のCSV】');
+// 実物のCSVは顧客名が入るためリポジトリに置けない。列・文字コード・
+// クォートの形をそのまま写したサンプルを scripts/fixtures に用意している。
+// 手元の実物があれば、そちらも続けて検証する
+const SAMPLE = path.join(ROOT, 'scripts/fixtures/shipment-sample.csv');
+const rows = wms.parseShipmentCsv(fs.readFileSync(SAMPLE));
+c('Shift_JISのまま読める', rows.length === 3 && rows[0].shipToName.includes('サンプル商事'), JSON.stringify(rows[0]?.shipToName));
+c('お問合せ番号が取れる', rows[0].trackingNumber === '66435973800');
+c('出荷日を日付にできる', rows[0].shippedOn === '2026-09-01');
+c('11桁と12桁が混在していても各行で判定する',
+  wms.detectCarrier(rows[0].trackingNumber) === '福山通運' &&
+  wms.detectCarrier(rows[1].trackingNumber) === '佐川急便' &&
+  wms.detectCarrier(rows[2].trackingNumber) === null);
+
+const REAL = 'C:/Users/watan/Downloads/出荷実績(注文単位).csv';
+if (fs.existsSync(REAL)) {
+  const real = wms.parseShipmentCsv(fs.readFileSync(REAL));
+  c('手元の実物CSVも読める', real.length > 0 && !!real[0].trackingNumber, `${real.length}行`);
 } else {
-  console.log('  --   実物のCSVが見つからないため省略');
+  console.log('  --   手元の実物CSVは見つかりませんでした（サンプルで検証済み）');
 }
+
 try {
   wms.parseShipmentCsv(Buffer.from('あ,い,う\n1,2,3', 'utf8'));
   c('列が違うCSVは受け付けない', false, 'エラーにならなかった');
