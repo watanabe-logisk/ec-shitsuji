@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { buildShippedMail, sendEmail } from '@/lib/email'
-import { trackingInfo } from '@/lib/wms'
+import { trackingInfo } from '@/lib/carrier'
 
 /**
  * 顧客への発送完了メールを送り、結果を email_log に残す。

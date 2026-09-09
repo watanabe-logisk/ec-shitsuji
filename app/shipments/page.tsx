@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Navbar from '@/components/Navbar'
-import { CARRIERS } from '@/lib/wms'
+import { CARRIERS } from '@/lib/carrier'
 
 /**
  * WMS の出荷実績CSVを取り込み、発送完了メールを送る画面。

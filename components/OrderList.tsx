@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { Fragment, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Order } from '@/types'
 import { alertDateLabel } from '@/lib/shipping'
 import { isOpenStatus, statusClassName, statusLabel } from '@/lib/status'
+import { CARRIERS, detectCarrier } from '@/lib/carrier'
 
 /**
  * 出荷済みを配送指定日の月ごとにまとめる。
@@ -53,6 +54,16 @@ export default function OrderList() {
   // 開いている月。既定はすべて畳む
   const [openMonths, setOpenMonths] = useState<Set<string>>(new Set())
 
+  // 1件ずつお問合せ番号を入れて出荷済みにするための入力欄。
+  // CSVの一括取り込みと同じAPIを通すので、記録・ステータス・発送完了メールの
+  // 扱いはどちらの経路でも同じになる
+  const [shipFor, setShipFor] = useState<string | null>(null)
+  const [trackNo, setTrackNo] = useState('')
+  const [carrier, setCarrier] = useState('')
+  const [shipBusy, setShipBusy] = useState(false)
+  const [shipError, setShipError] = useState('')
+  const [shipDone, setShipDone] = useState<Record<string, string>>({})
+
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     const params = statusFilter ? `?status=${statusFilter}` : ''
@@ -91,13 +102,72 @@ export default function OrderList() {
     })
   }
 
-  async function handleShipped(id: string) {
+  function openShipForm(order: Order) {
+    setShipFor(order.id)
+    setTrackNo('')
+    setCarrier('')
+    setShipError('')
+  }
+
+  /** 入力に合わせて配送業者を自動で選ぶ。桁数から決まらない間は空のまま */
+  function onTrackNoChange(value: string) {
+    setTrackNo(value)
+    const guess = detectCarrier(value)
+    if (guess) setCarrier(guess)
+  }
+
+  /**
+   * お問合せ番号を登録して出荷済みにする。
+   *
+   * CSV取り込みと同じ /api/shipments/confirm を通す。二重登録の防止や
+   * メール送信の扱いを1か所に集めておかないと、経路によって挙動がずれる。
+   */
+  async function submitShipment(order: Order) {
+    if (!trackNo.trim() || !carrier) return
+    const ok = window.confirm(
+      `${order.customer_name} の ${order.order_number} を出荷済みにして、\n`
+      + `お客様へ発送完了メールを送ります。\n\n`
+      + `お問合せ番号: ${trackNo.trim()}（${carrier}）\n\n`
+      + `送信したメールは取り消せません。番号に間違いはありませんか？`,
+    )
+    if (!ok) return
+
+    setShipBusy(true)
+    setShipError('')
+    // 出荷日はブラウザの時計に左右されないよう日本時間で組み立てる
+    const shippedOn = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)
+    const res = await fetch('/api/shipments/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: [{ orderId: order.id, trackingNumber: trackNo.trim(), carrier, shippedOn }],
+      }),
+    })
+    const json = await res.json()
+    const r = json.results?.[0]
+    if (!res.ok || !r?.ok) {
+      setShipError(r?.message ?? json.error ?? '登録できませんでした')
+    } else {
+      setShipDone(d => ({ ...d, [order.id]: [r.message, r.mailMessage].filter(Boolean).join('　') }))
+      setShipFor(null)
+      await fetchOrders()
+    }
+    setShipBusy(false)
+  }
+
+  /** 追跡番号が無い出荷（自社配送・引き取りなど）のための逃げ道 */
+  async function markShippedWithoutTracking(id: string) {
+    const ok = window.confirm(
+      'お問合せ番号を登録せずに出荷済みにします。\n\n発送完了メールは送られません。よろしいですか？',
+    )
+    if (!ok) return
     setProcessingId(id)
     await fetch(`/api/orders/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'shipped' }),
     })
+    setShipFor(null)
     await fetchOrders()
     setProcessingId(null)
   }
@@ -222,8 +292,10 @@ ${list}
           <tbody className="divide-y divide-warm-200">
             {list.map(order => {
               const isProcessing = processingId === order.id
+              const guessed = detectCarrier(trackNo)
               return (
-                <tr key={order.id} className={`hover:bg-warm-100 transition-colors ${selected.has(order.id) ? 'bg-champagne-light' : ''}`}>
+                <Fragment key={order.id}>
+                <tr className={`hover:bg-warm-100 transition-colors ${selected.has(order.id) ? 'bg-champagne-light' : ''}`}>
                   <td className="px-3 py-3">
                     <input
                       type="checkbox"
@@ -271,10 +343,10 @@ ${list}
                             pending 決め打ちだと出荷済みにできなくなる */}
                         {isOpenStatus(order.status) && (
                           <button
-                            onClick={() => handleShipped(order.id)}
-                            className="text-xs text-stone hover:text-sage transition-colors"
+                            onClick={() => openShipForm(order)}
+                            className="text-xs text-stone hover:text-sage transition-colors whitespace-nowrap"
                           >
-                            出荷済み
+                            出荷登録
                           </button>
                         )}
                         <button
@@ -287,6 +359,78 @@ ${list}
                     )}
                   </td>
                 </tr>
+
+                {/* 出荷登録。CSVを使わず1件ずつ番号を入れるときに開く */}
+                {shipFor === order.id && (
+                  <tr className="bg-warm-100">
+                    <td colSpan={9} className="px-3 py-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs tracking-widest text-stone uppercase mr-1">
+                          出荷登録
+                        </span>
+                        <input
+                          autoFocus
+                          value={trackNo}
+                          onChange={e => onTrackNoChange(e.target.value)}
+                          placeholder="お問合せ番号"
+                          className="border border-warm-300 bg-warm-50 px-3 py-2 text-sm text-ink tabular-nums focus:outline-none focus:border-champagne-dark w-52"
+                        />
+                        <select
+                          value={carrier}
+                          onChange={e => setCarrier(e.target.value)}
+                          className="border border-warm-300 bg-warm-50 px-3 py-2 text-sm text-ink focus:outline-none focus:border-champagne-dark"
+                        >
+                          <option value="">配送業者を選ぶ</option>
+                          {CARRIERS.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <button
+                          onClick={() => submitShipment(order)}
+                          disabled={shipBusy || !trackNo.trim() || !carrier}
+                          className="bg-navy text-warm-50 px-5 py-2 text-xs tracking-widest uppercase hover:opacity-90 disabled:opacity-40"
+                        >
+                          {shipBusy ? '登録中...' : '出荷済みにしてメールを送る'}
+                        </button>
+                        <button
+                          onClick={() => setShipFor(null)}
+                          className="text-xs text-stone hover:text-champagne-dark tracking-wide"
+                        >
+                          やめる
+                        </button>
+                      </div>
+
+                      <div className="text-xs text-stone mt-2 leading-relaxed space-y-0.5">
+                        {trackNo.trim() && (
+                          guessed
+                            ? <p>{trackNo.replace(/\D/g, '').length}桁のため <span className="text-ink">{guessed}</span> と判定しました。違う場合は選び直してください。</p>
+                            : <p className="text-champagne-dark">
+                                {trackNo.replace(/\D/g, '').length}桁は自動で判定できません。配送業者を選んでください。
+                              </p>
+                        )}
+                        <p>
+                          登録すると出荷済みになり、お客様へ発送完了メールを送ります。
+                          <button
+                            onClick={() => markShippedWithoutTracking(order.id)}
+                            className="ml-2 underline hover:text-champagne-dark"
+                          >
+                            番号なしで出荷済みにする
+                          </button>
+                        </p>
+                      </div>
+
+                      {shipError && <p className="text-xs text-red-500 mt-2">{shipError}</p>}
+                    </td>
+                  </tr>
+                )}
+
+                {/* 登録した直後の結果。画面を切り替えるまで残す */}
+                {shipDone[order.id] && (
+                  <tr className="bg-sage-light">
+                    <td colSpan={9} className="px-3 py-2 text-xs text-sage">
+                      {shipDone[order.id]}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               )
             })}
           </tbody>

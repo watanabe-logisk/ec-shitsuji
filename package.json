@@ -18,7 +18,8 @@
     "test:emails": "node scripts/test-email-recipients.mjs",
     "test:greeting": "node scripts/test-greeting.mjs",
     "test:shipments": "node scripts/test-shipment-match.mjs",
-    "test:import": "node scripts/test-shipment-import.mjs"
+    "test:import": "node scripts/test-shipment-import.mjs",
+    "test:manual-ship": "node scripts/test-manual-shipment.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

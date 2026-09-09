@@ -189,6 +189,13 @@ try {
   const { count } = await db.from('orders')
     .select('id', { count: 'exact', head: true }).like('order_number', `${MARK}%`);
   console.log(`\nテスト受注を削除しました（残り ${count ?? 0} 件）`);
+
+  // 受注を消しても操作履歴・送信履歴は残る。テストの分が管理画面に並ぶと
+  // 本物の変更や送信失敗を見落とすので、ここで消す
+  const { cleanupTestLogs } = await import('./cleanup-test-logs.mjs');
+  const removed = await cleanupTestLogs(db, MARK);
+  if (removed) console.log(`テストの操作履歴・送信履歴 ${removed} 件を削除しました。`);
+
 }
 
 console.log(`\n===== 成功 ${passed} / 失敗 ${failed} =====`);

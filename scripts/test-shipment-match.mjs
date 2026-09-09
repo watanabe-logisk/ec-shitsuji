@@ -24,7 +24,7 @@ fs.writeFileSync(CONF, JSON.stringify({
     esModuleInterop: true, skipLibCheck: true,
     baseUrl: '.', paths: { '@/*': ['./*'] },
   },
-  files: ['lib/wms.ts', 'lib/shipmentMatch.ts'],
+  files: ['lib/wms.ts', 'lib/shipmentMatch.ts', 'lib/carrier.ts'],
 }, null, 2));
 try {
   execFileSync('npx', ['tsc', '-p', '_test_tsconfig.json'], { cwd: ROOT, shell: true, stdio: 'pipe' });
@@ -32,8 +32,14 @@ try {
   fs.rmSync(CONF, { force: true });
 }
 // tsc は別名をそのまま出力するので、node が読めるよう相対パスに直す
+// tsc は別名（@/lib/...）をそのまま出力するので、node が読めるよう相対パスに直す
+for (const f of ['shipmentMatch.js', 'wms.js']) {
+  const fp = path.join(OUT, f);
+  fs.writeFileSync(fp, fs.readFileSync(fp, 'utf8')
+    .replace(/@\/lib\/wms/g, './wms')
+    .replace(/@\/lib\/carrier/g, './carrier'));
+}
 const mp = path.join(OUT, 'shipmentMatch.js');
-fs.writeFileSync(mp, fs.readFileSync(mp, 'utf8').replace(/@\/lib\/wms/g, './wms'));
 
 const { createRequire } = await import('node:module');
 const require = createRequire(import.meta.url);
