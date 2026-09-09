@@ -82,6 +82,24 @@ export type ShippingAlertItem = {
   overdue: boolean
 }
 
+const WEEKDAY_LABELS_JP = ['日', '月', '火', '水', '木', '金', '土']
+
+/**
+ * 配送指定日を '9/11(金)' の形にする。
+ *
+ * 見出しの日付が「2026年9月9日(水)」なのに明細が「2026-09-11」だと
+ * 同じ文の中で表記が食い違って読みにくい。
+ * 曜日は Date.UTC で組み立てて求める。実行環境が UTC のため、
+ * ローカル時刻で読むと前日にずれる。
+ */
+function shippingDateLabel(iso: string): string {
+  const m = (iso ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return iso ?? ''
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3])
+  const w = WEEKDAY_LABELS_JP[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()]
+  return `${mo}/${d}(${w})`
+}
+
 export function buildShippingAlertMessage(
   todayLabel: string,
   items: ShippingAlertItem[],
@@ -89,8 +107,8 @@ export function buildShippingAlertMessage(
   if (items.length === 0) {
     return [
       mentionPrefix().trimEnd(),
-      `[info][title]本日出荷が必要な案件はありません[/title]`,
-      `${escapeTag(todayLabel)} 時点で、本日出荷しないと間に合わない注文はありません。`,
+      `[info][title]本日の出荷はありません[/title]`,
+      `${escapeTag(todayLabel)}　確認しました。本日中の出荷が必要な注文はありません。`,
       '[/info]',
     ].filter(Boolean).join('\n')
   }
@@ -110,7 +128,8 @@ export function buildShippingAlertMessage(
   // 状態は全角括弧で囲む。半角の [ ] は Chatwork がタグとして解釈しうるため
   const lines = sorted.map(i =>
     `${i.overdue ? '⚠ ' : '・'}${escapeTag(i.customerName)}\n`
-    + `　${escapeTag(i.productName)} × ${i.quantity}　配送 ${escapeTag(i.shippingDate)}`
+    + `　${escapeTag(i.productName)}　${i.quantity}ケース`
+    + `　着日 ${escapeTag(shippingDateLabel(i.shippingDate))}`
     + `　（${escapeTag(i.statusLabel)}）　${escapeTag(i.orderNumber)}`
   )
 
@@ -118,10 +137,10 @@ export function buildShippingAlertMessage(
   return [
     mentionPrefix().trimEnd(),
     `[info][title]${escapeTag(title)}[/title]`,
-    `${escapeTag(todayLabel)}｜本日出荷しないと配送指定日に間に合いません。`,
+    `${escapeTag(todayLabel)}　本日中に出荷しないと、着日に間に合いません。`,
     '',
     ...lines,
-    overdue > 0 ? '\n⚠ は出荷期限を過ぎています。配送指定日に間に合うか確認してください。' : '',
+    overdue > 0 ? '\n⚠ は出荷期限を過ぎています。着日に間に合うか確認してください。' : '',
     appUrl ? `[hr]${escapeTag(appUrl)}/dashboard` : '',
     '[/info]',
   ].filter(Boolean).join('\n')

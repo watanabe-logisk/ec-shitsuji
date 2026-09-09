@@ -149,6 +149,38 @@ try {
   } else {
     console.log('\n【実投稿】--post を付けると実際に1通送ります（今回は送信済みの通知内容のみ検証）');
   }
+  // --- 文面そのもの ---------------------------------------------------
+  // 毎朝これを読むのは人なので、言い回しの崩れは実害になる。
+  // 実装を直接読み込んで、出来上がりの文字列を確かめる
+  console.log('\n【文面】');
+  const { execFileSync } = await import('node:child_process');
+  const OUT = path.join(ROOT, '_alert_out');
+  fs.rmSync(OUT, { recursive: true, force: true });
+  try {
+    execFileSync('npx', ['tsc', 'lib/chatwork.ts', '--outDir', OUT,
+      '--module', 'esnext', '--target', 'es2020', '--moduleResolution', 'bundler'],
+      { cwd: ROOT, shell: true, stdio: 'pipe' });
+    const { buildShippingAlertMessage } = await import(`file://${path.join(OUT, 'chatwork.js').replace(/\\/g, '/')}`);
+
+    const none = buildShippingAlertMessage('2026年9月9日(水)', []);
+    check('0件の見出しが「本日の出荷はありません」', none.includes('[title]本日の出荷はありません[/title]'), none);
+    check('  否定を重ねた言い回しにしない', !/しないと.*ない/.test(none), none);
+    check('  いつ時点の確認か分かる', none.includes('2026年9月9日(水)'), none);
+    check('  発火時刻は入れない', !/\d{2}:\d{2}/.test(none), none);
+
+    const one = buildShippingAlertMessage('2026年9月9日(水)', [{
+      orderNumber: '260907001', customerName: 'よみうりランド', productName: 'FUJI SUN SUI 500ml 24本',
+      quantity: 20, shippingDate: '2026-09-11', statusLabel: '準備中', overdue: false,
+    }]);
+    check('数量に単位が付く', one.includes('20ケース'), one);
+    check('  「× 20」のような単位無しにしない', !one.includes('× 20'), one);
+    check('着日が見出しと同じ和暦表記', one.includes('着日 9/11(金)'), one);
+    check('  ISO形式をそのまま出さない', !one.includes('2026-09-11'), one);
+    check('「配送」ではなく「着日」と書く', !one.includes('配送 '), one);
+  } finally {
+    fs.rmSync(OUT, { recursive: true, force: true });
+  }
+
 } catch (e) {
   failed++;
   console.error('\nテスト実行中にエラー:', e.message);

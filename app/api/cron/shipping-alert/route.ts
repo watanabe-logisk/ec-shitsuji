@@ -45,11 +45,16 @@ function jstToday(): string {
  * Vercel の Hobby プランは cron の実行時刻精度が ±59分あるため、
  * 実際に何時に発火したかを通知本文から確認できるようにしておく。
  */
+/**
+ * 通知の冒頭に出す日付。
+ *
+ * 以前は発火時刻（08:04 など）も入れていた。Vercel の cron が何分ずれるかを
+ * 測るためだったが、数日ぶんで4分前後に安定することが分かったので外した。
+ * 運用で見るのは日付だけでよい。
+ */
 function jstTodayLabel(): string {
   const d = jstNow()
-  const hh = String(d.getUTCHours()).padStart(2, '0')
-  const mm = String(d.getUTCMinutes()).padStart(2, '0')
-  return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日(${WEEKDAY_LABELS[d.getUTCDay()]}) ${hh}:${mm}`
+  return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日(${WEEKDAY_LABELS[d.getUTCDay()]})`
 }
 /**
  * 今日が休業日（土日祝）か。
