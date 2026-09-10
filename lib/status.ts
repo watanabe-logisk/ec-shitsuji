@@ -63,3 +63,21 @@ export function statusRank(status: string): number {
 export function isOpenStatus(status: string): boolean {
   return status === 'pending' || status === 'confirmed' || status === 'preparing'
 }
+
+/**
+ * 受注一覧の並びで使う大分類。
+ *
+ * 状態そのもので並べると、準備中にしただけで一覧の下へ沈んでしまう。
+ * まだ出荷していないものは、状態が変わっても同じ位置に居てほしい。
+ * 今日出荷すべきものが下に隠れると見落とすため。
+ * 出荷前はひとまとめにして、その中は配送指定日の順に並べる。
+ *
+ *   0 = まだ出荷していない（出荷待ち・受注確定・準備中）
+ *   1 = 終わったもの（出荷済み・完了）
+ *   2 = キャンセル
+ */
+export function listGroupRank(status: string): number {
+  if (isOpenStatus(status)) return 0
+  if (status === 'cancelled') return 2
+  return 1
+}

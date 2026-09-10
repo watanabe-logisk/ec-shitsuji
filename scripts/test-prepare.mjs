@@ -113,6 +113,30 @@ try {
   c('既に準備中なら進めない', again.json.advanced?.length === 0, JSON.stringify(again.json.advanced));
   c('メールも増えない', (await mailsFor(`${MARK}A`, 'preparing')).length === 1);
 
+  console.log('\n【準備中にしても一覧の位置が下がらない】');
+  // 状態で並べると、準備中にしただけで今日出荷すべき行が下に沈み、見落とす
+  const list = await (await fetch(`${BASE}/api/orders`, { headers: { Cookie: COOKIE } })).json();
+  const posOf = num => list.findIndex(o => o.order_number === num);
+  const iA = posOf(`${MARK}A`);          // 準備中・配送 2026-09-17
+  const iLater = list.findIndex(
+    o => o.status === 'pending' && o.shipping_date > '2026-09-17',
+  );
+  c('一覧に載っている', iA >= 0, `${iA}`);
+  if (iLater >= 0) {
+    c('準備中でも、配送指定日が近ければ出荷待ちより上に来る', iA < iLater,
+      `準備中=${iA}番目 / 後日の出荷待ち=${iLater}番目`);
+  } else {
+    console.log('  --   比較できる出荷待ちの受注が無いため省略');
+  }
+  const openOnly = list.filter(o => ['pending', 'confirmed', 'preparing'].includes(o.status));
+  const dates = openOnly.map(o => o.shipping_date);
+  c('出荷前のものは配送指定日の昇順に並ぶ',
+    dates.every((d, i) => i === 0 || dates[i - 1] <= d), dates.slice(0, 5).join(' '));
+  const ranks = list.map(o =>
+    ['pending', 'confirmed', 'preparing'].includes(o.status) ? 0 : o.status === 'cancelled' ? 2 : 1);
+  c('出荷前 → 終了 → キャンセル の順は保たれる',
+    ranks.every((r, i) => i === 0 || ranks[i - 1] <= r));
+
   console.log('\n【CSV出力でも同じ結果になる】');
   const csv = await fetch(`${BASE}/api/csv`, {
     method: 'POST', headers: { Cookie: COOKIE, 'Content-Type': 'application/json' },
