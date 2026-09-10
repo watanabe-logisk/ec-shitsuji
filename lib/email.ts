@@ -183,6 +183,42 @@ export function buildReceivedMail(o: OrderMail): { subject: string; body: string
   }
 }
 
+/**
+ * 出荷準備に入ったことの連絡。
+ *
+ * CSV出力（倉庫へ出荷指示を渡した時点）と、管理画面の「準備中にする」で送る。
+ * 受付と発送の間が空くため、その間の状況を知らせる。
+ * まだ発送していないので、お問合せ番号は書けない。
+ */
+export function buildPreparingMail(o: OrderMail): { subject: string; body: string } {
+  return {
+    subject: `【AQUA JACKET】出荷の準備に入りました（${o.orderNumber}）`,
+    body: [
+      greetingFor(o.customerName, o.recipientLabel),
+      '',
+      'ご注文の商品について、出荷の準備に入りましたのでお知らせいたします。',
+      '',
+      '───────────────────────',
+      `注文番号　　: ${o.orderNumber}`,
+      `商品　　　　: ${o.productName}`,
+      `数量　　　　: ${o.quantity} ケース`,
+      `お届け先　　: ${shipToLine(o.addressLabel, o.contactName)}`,
+      `お届け予定日: ${o.deliveryDateLabel}`,
+      `配送時間帯　: ${o.timeSlot}`,
+      '───────────────────────',
+      '',
+      '発送が完了しましたら、配送業者とお問合せ番号を',
+      'あらためてご連絡いたします。',
+      '',
+      '※ この段階でのご注文内容の変更・キャンセルは',
+      '　 お受けできない場合がございます。お急ぎの場合は',
+      '　 このメールにご返信ください。',
+      '',
+      SIGNATURE,
+    ].join('\n'),
+  }
+}
+
 export type ShippedMail = OrderMail & {
   carrierName: string
   trackingNumber: string

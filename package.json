@@ -19,7 +19,8 @@
     "test:greeting": "node scripts/test-greeting.mjs",
     "test:shipments": "node scripts/test-shipment-match.mjs",
     "test:import": "node scripts/test-shipment-import.mjs",
-    "test:manual-ship": "node scripts/test-manual-shipment.mjs"
+    "test:manual-ship": "node scripts/test-manual-shipment.mjs",
+    "test:prepare": "node scripts/test-prepare.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

@@ -64,6 +64,10 @@ export default function OrderList() {
   const [shipError, setShipError] = useState('')
   const [shipDone, setShipDone] = useState<Record<string, string>>({})
 
+  // 「準備中にする」の実行中と、その結果表示
+  const [preparing, setPreparing] = useState(false)
+  const [prepareResult, setPrepareResult] = useState<string[] | null>(null)
+
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     const params = statusFilter ? `?status=${statusFilter}` : ''
@@ -222,6 +226,49 @@ export default function OrderList() {
     }
     setSelected(new Set())
     await fetchOrders()
+  }
+
+  /**
+   * 選んだ受注を準備中へ進め、顧客へ出荷準備のメールを送る。
+   * CSV出力でも同じことが起きる。CSVを出さずに準備へ入る場合の入口。
+   */
+  async function handlePrepare() {
+    if (selected.size === 0) return
+    const targets = orders.filter(
+      o => selected.has(o.id) && (o.status === 'pending' || o.status === 'confirmed'),
+    )
+    if (targets.length === 0) {
+      alert('選んだ受注に、準備中へ進められるものがありません。' + '\n'
+        + '（既に準備中・出荷済み・キャンセルのものは対象外です）')
+      return
+    }
+
+    const ok = window.confirm(
+      `${targets.length}件を準備中にして、お客様へ出荷準備のメールを送ります。` + '\n\n'
+      + targets.map(o => `・${o.customer_name}　${o.order_number}`).join('\n')
+      + '\n\n' + '送信したメールは取り消せません。よろしいですか？',
+    )
+    if (!ok) return
+
+    setPreparing(true)
+    const res = await fetch('/api/orders/prepare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: Array.from(selected) }),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      alert(json.error ?? '準備中にできませんでした')
+    } else {
+      const lines = (json.advanced ?? []).map(
+        (a: { orderNumber: string; customerName: string; mailMessage: string }) =>
+          `${a.orderNumber}　${a.customerName}　${a.mailMessage}`,
+      )
+      setPrepareResult(lines)
+    }
+    setSelected(new Set())
+    await fetchOrders()
+    setPreparing(false)
   }
 
   async function handleExportCSV() {
@@ -463,6 +510,25 @@ ${list}
           ))}
         </div>
 
+        {prepareResult && (
+          <div className="bg-sage-light border border-sage/30 px-4 py-3 mb-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="text-xs text-sage space-y-0.5">
+                <p className="tracking-wide">
+                  {prepareResult.length}件を準備中にしました。
+                </p>
+                {prepareResult.map((l, i) => <p key={i}>{l}</p>)}
+              </div>
+              <button
+                onClick={() => setPrepareResult(null)}
+                className="text-xs text-sage hover:text-champagne-dark shrink-0"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="w-6 h-6 border-2 border-warm-300 border-t-champagne rounded-full animate-spin" />
@@ -567,6 +633,13 @@ ${list}
                 </>
               )
             })()}
+            <button
+              onClick={handlePrepare}
+              disabled={preparing}
+              className="border border-champagne text-champagne text-xs tracking-widest uppercase px-5 py-2 hover:bg-champagne hover:text-navy transition-colors disabled:opacity-40"
+            >
+              {preparing ? '処理中...' : '準備中にする'}
+            </button>
             <button
               onClick={handleExportCSV}
               disabled={exporting}
